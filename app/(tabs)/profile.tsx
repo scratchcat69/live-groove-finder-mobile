@@ -5,13 +5,17 @@ import {
   Alert,
   View as RNView,
 } from "react-native"
-import { useCallback } from "react"
+import { useCallback, useRef } from "react"
 import { useFocusEffect } from "@react-navigation/native"
+import { useRouter } from "expo-router"
 
 import { Text, View } from "@/components/Themed"
 import { useThemeColor } from "@/components/Themed"
 import { useAuthStore, useProfile, useRoles } from "@/src/stores/authStore"
 import { useDiscoveries, Discovery } from "@/src/hooks/useDiscoveries"
+import { useFollowingCount } from "@/src/hooks/useFollowingCount"
+import { useFavorites } from "@/src/hooks/useFavorites"
+import { useFavoriteArtists, FavoriteArtistInfo } from "@/src/hooks/useFavoriteArtists"
 
 function DiscoveryRow({
   discovery,
@@ -20,13 +24,14 @@ function DiscoveryRow({
   discovery: Discovery
   onDelete: (id: string) => void
 }) {
-  const date = new Date(discovery.discovered_at)
-  const dateStr = date.toLocaleDateString()
+  const dateStr = discovery.discovered_at
+    ? new Date(discovery.discovered_at).toLocaleDateString()
+    : ""
 
   const handleDelete = () => {
     Alert.alert(
       "Delete Discovery",
-      `Delete "${discovery.song_title}" by ${discovery.song_artist}?`,
+      `Delete "${discovery.song_title ?? "Unknown"}" by ${discovery.song_artist ?? "Unknown"}?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -45,10 +50,10 @@ function DiscoveryRow({
       </View>
       <View style={styles.discoveryContent}>
         <Text style={styles.discoveryTitle} numberOfLines={1}>
-          {discovery.song_title}
+          {discovery.song_title ?? "Unknown Title"}
         </Text>
         <Text style={styles.discoveryArtist} numberOfLines={1}>
-          {discovery.song_artist}
+          {discovery.song_artist ?? "Unknown Artist"}
         </Text>
       </View>
       <Text style={styles.discoveryDate}>{dateStr}</Text>
@@ -59,17 +64,55 @@ function DiscoveryRow({
   )
 }
 
+function FavoriteArtistRow({
+  artist,
+  onPress,
+}: {
+  artist: FavoriteArtistInfo
+  onPress: () => void
+}) {
+  return (
+    <TouchableOpacity style={styles.favoriteRow} onPress={onPress} activeOpacity={0.7}>
+      <RNView style={styles.favoriteAvatar}>
+        <Text style={styles.favoriteAvatarText}>
+          {artist.name[0]?.toUpperCase() ?? "?"}
+        </Text>
+      </RNView>
+      <RNView style={styles.favoriteContent}>
+        <Text style={styles.favoriteName} numberOfLines={1}>
+          {artist.name}
+        </Text>
+        {artist.genre && artist.genre.length > 0 && (
+          <Text style={styles.favoriteGenre} numberOfLines={1}>
+            {artist.genre.join(" · ")}
+          </Text>
+        )}
+      </RNView>
+    </TouchableOpacity>
+  )
+}
+
 export default function ProfileScreen() {
   const profile = useProfile()
   const roles = useRoles()
   const { signOut, isLoading } = useAuthStore()
-  const { discoveries, loading: discoveriesLoading, deleteDiscovery, refresh } = useDiscoveries(50)
+  const { discoveries, totalCount, loading: discoveriesLoading, deleteDiscovery, refresh } = useDiscoveries(50)
   const backgroundColor = useThemeColor({}, "background")
+  const router = useRouter()
 
-  // Refresh discoveries when tab comes into focus
+  const { count: followingCount } = useFollowingCount()
+  const { favoriteIds, count: favoritesCount } = useFavorites("artist")
+  const { data: favoriteArtists = [] } = useFavoriteArtists(favoriteIds())
+
+  // Refresh discoveries when tab comes back into focus (skip initial mount)
+  const hasMounted = useRef(false)
   useFocusEffect(
     useCallback(() => {
-      refresh()
+      if (hasMounted.current) {
+        refresh()
+      } else {
+        hasMounted.current = true
+      }
     }, [refresh])
   )
 
@@ -120,16 +163,16 @@ export default function ProfileScreen() {
 
         <View style={styles.statsContainer}>
           <View style={styles.stat}>
-            <Text style={styles.statNumber}>{discoveries.length}</Text>
+            <Text style={styles.statNumber}>{totalCount ?? discoveries.length}</Text>
             <Text style={styles.statLabel}>Discoveries</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{followingCount}</Text>
             <Text style={styles.statLabel}>Following</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Followers</Text>
+            <Text style={styles.statNumber}>{favoritesCount}</Text>
+            <Text style={styles.statLabel}>Favorites</Text>
           </View>
         </View>
 
@@ -151,6 +194,19 @@ export default function ProfileScreen() {
             ))
           )}
         </View>
+
+        {favoriteArtists.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Favorite Artists</Text>
+            {favoriteArtists.map((artist) => (
+              <FavoriteArtistRow
+                key={artist.id}
+                artist={artist}
+                onPress={() => router.push(`/(tabs)/artists/${artist.id}` as any)}
+              />
+            ))}
+          </View>
+        )}
 
         <TouchableOpacity
           style={styles.signOutButton}
@@ -307,5 +363,39 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     fontSize: 14,
     fontWeight: "600",
+  },
+  favoriteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  favoriteAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#6366f1",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  favoriteAvatarText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  favoriteContent: {
+    flex: 1,
+  },
+  favoriteName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#fff",
+  },
+  favoriteGenre: {
+    fontSize: 13,
+    color: "#aaa",
+    marginTop: 2,
   },
 })

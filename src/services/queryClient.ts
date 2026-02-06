@@ -57,6 +57,14 @@ export const queryKeys = {
     following: (userId: string) => ["artists", "following", userId] as const,
   },
 
+  // Venues
+  venues: {
+    all: ["venues"] as const,
+    nearby: (lat: number, lng: number, radius?: number) =>
+      ["venues", "nearby", lat, lng, radius] as const,
+    detail: (id: string) => ["venues", "detail", id] as const,
+  },
+
   // Favorites
   favorites: {
     all: (userId: string) => ["favorites", userId] as const,
