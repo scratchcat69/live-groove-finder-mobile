@@ -82,7 +82,7 @@ export function usePushNotifications() {
     }
 
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: undefined, // Uses EAS project ID from app config
+      projectId: "5bd80169-576a-4d26-9a88-1217492344ff",
     })
     const token = tokenData.data
     setPushToken(token)
