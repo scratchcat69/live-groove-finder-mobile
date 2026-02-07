@@ -1,13 +1,14 @@
 import { StyleSheet, FlatList, RefreshControl, View as RNView, TouchableOpacity, Alert } from "react-native"
-import { useCallback } from "react"
+import { useCallback, useRef } from "react"
 import { useFocusEffect } from "@react-navigation/native"
 
 import { Text, View, useThemeColor } from "@/components/Themed"
 import { usePublicDiscoveries, PublicDiscovery } from "@/src/hooks/usePublicDiscoveries"
 import { useAuthStore } from "@/src/stores/authStore"
-import { supabase } from "@/src/services/supabase"
+import { useDiscoveries } from "@/src/hooks/useDiscoveries"
 
-function getTimeAgo(dateString: string): string {
+function getTimeAgo(dateString: string | null): string {
+  if (!dateString) return ""
   const date = new Date(dateString)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -31,13 +32,13 @@ function DiscoveryCard({
   onDelete: (id: string) => void
 }) {
   const timeAgo = getTimeAgo(discovery.discovered_at)
-  const matchType = discovery.song_metadata?.matchType === "melody" ? "Humming" : "Audio"
-  const isOwner = currentUserId === discovery.discovered_by_user_id
+  const matchType = discovery.song_metadata && discovery.song_metadata.matchType === "melody" ? "Humming" : "Audio"
+  const isOwner = currentUserId != null && currentUserId === discovery.discovered_by_user_id
 
   const handleDelete = () => {
     Alert.alert(
       "Delete Discovery",
-      `Delete "${discovery.song_title}" by ${discovery.song_artist}?`,
+      `Delete "${discovery.song_title ?? "Unknown"}" by ${discovery.song_artist ?? "Unknown"}?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -71,12 +72,12 @@ function DiscoveryCard({
         </RNView>
         <RNView style={styles.songDetails}>
           <Text style={styles.songTitle} numberOfLines={1}>
-            {discovery.song_title}
+            {discovery.song_title ?? "Unknown Title"}
           </Text>
           <Text style={styles.songArtist} numberOfLines={1}>
-            {discovery.song_artist}
+            {discovery.song_artist ?? "Unknown Artist"}
           </Text>
-          {discovery.song_metadata?.album && (
+          {discovery.song_metadata && discovery.song_metadata.album && (
             <Text style={styles.songAlbum} numberOfLines={1}>
               {discovery.song_metadata.album}
             </Text>
@@ -93,31 +94,27 @@ function DiscoveryCard({
 
 export default function FeedScreen() {
   const { discoveries, loading, refresh } = usePublicDiscoveries(50)
+  const { deleteDiscovery } = useDiscoveries(0) // only need delete, not fetching
   const backgroundColor = useThemeColor({}, "background")
   const user = useAuthStore((state) => state.user)
 
-  // Refresh when tab comes into focus
+  // Refresh when tab comes back into focus (skip initial mount — hook already fetches)
+  const hasMounted = useRef(false)
   useFocusEffect(
     useCallback(() => {
-      refresh()
+      if (hasMounted.current) {
+        refresh()
+      } else {
+        hasMounted.current = true
+      }
     }, [refresh])
   )
 
   const handleDeleteDiscovery = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from("discoveries")
-        .delete()
-        .eq("id", id)
-
-      if (error) {
-        Alert.alert("Error", "Failed to delete discovery")
-        return
-      }
-
-      // Refresh the list
+    const success = await deleteDiscovery(id)
+    if (success) {
       refresh()
-    } catch {
+    } else {
       Alert.alert("Error", "Failed to delete discovery")
     }
   }

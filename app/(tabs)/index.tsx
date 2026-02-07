@@ -10,6 +10,7 @@ import {
 import { useAudioRecording } from "@/src/hooks/useAudioRecording"
 import { useMusicRecognition } from "@/src/hooks/useMusicRecognition"
 import { useDiscoveries, Discovery } from "@/src/hooks/useDiscoveries"
+import { useLocation } from "@/src/hooks/useLocation"
 
 function DiscoveryItem({
   discovery,
@@ -23,7 +24,7 @@ function DiscoveryItem({
   const handleDelete = () => {
     Alert.alert(
       "Delete Discovery",
-      `Delete "${discovery.song_title}" by ${discovery.song_artist}?`,
+      `Delete "${discovery.song_title ?? "Unknown"}" by ${discovery.song_artist ?? "Unknown"}?`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -42,10 +43,10 @@ function DiscoveryItem({
       </View>
       <View style={styles.discoveryInfo}>
         <Text style={styles.discoveryTitle} numberOfLines={1}>
-          {discovery.song_title}
+          {discovery.song_title ?? "Unknown Title"}
         </Text>
         <Text style={styles.discoveryArtist} numberOfLines={1}>
-          {discovery.song_artist}
+          {discovery.song_artist ?? "Unknown Artist"}
         </Text>
         <Text style={styles.discoveryTime}>{timeAgo}</Text>
       </View>
@@ -56,7 +57,8 @@ function DiscoveryItem({
   )
 }
 
-function getTimeAgo(dateString: string): string {
+function getTimeAgo(dateString: string | null): string {
+  if (!dateString) return ""
   const date = new Date(dateString)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -78,12 +80,26 @@ export default function DiscoverScreen() {
     reset: resetRecognition,
   } = useMusicRecognition()
 
+  const { location } = useLocation()
+
+  // Build location data for recognition (attaches to saved discoveries)
+  const getLocationData = useCallback(() => {
+    if (!location) return undefined
+    return {
+      name: location.city
+        ? `${location.city}${location.region ? `, ${location.region}` : ""}`
+        : undefined,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    }
+  }, [location])
+
   // Handle auto-stop: when recording reaches max duration, automatically recognize
   const handleAutoStop = useCallback(
     async (audioBase64: string) => {
-      await recognize(audioBase64)
+      await recognize(audioBase64, getLocationData())
     },
-    [recognize]
+    [recognize, getLocationData]
   )
 
   const {
@@ -126,7 +142,7 @@ export default function DiscoverScreen() {
       // Stop recording and recognize
       const audioBase64 = await stopRecording()
       if (audioBase64) {
-        await recognize(audioBase64)
+        await recognize(audioBase64, getLocationData())
       }
     } else if (!isProcessing) {
       // Start recording
@@ -141,6 +157,7 @@ export default function DiscoverScreen() {
     stopRecording,
     recognize,
     resetRecognition,
+    getLocationData,
   ])
 
   const handleDismiss = useCallback(() => {

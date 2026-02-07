@@ -4,20 +4,21 @@ import { useAuthStore } from "../stores/authStore"
 
 export interface Discovery {
   id: string
-  song_title: string
-  song_artist: string
+  song_title: string | null
+  song_artist: string | null
   song_metadata: {
     album?: string
     matchType?: string
     confidence?: number
     spotifyUrl?: string
-  }
-  location?: string
-  discovered_at: string
+  } | null
+  location?: string | null
+  discovered_at: string | null
 }
 
 interface UseDiscoveriesReturn {
   discoveries: Discovery[]
+  totalCount: number | null
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
@@ -26,6 +27,7 @@ interface UseDiscoveriesReturn {
 
 export function useDiscoveries(limit: number = 10): UseDiscoveriesReturn {
   const [discoveries, setDiscoveries] = useState<Discovery[]>([])
+  const [totalCount, setTotalCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const user = useAuthStore((state) => state.user)
@@ -41,9 +43,9 @@ export function useDiscoveries(limit: number = 10): UseDiscoveriesReturn {
       setLoading(true)
       setError(null)
 
-      const { data, error: fetchError } = await supabase
+      const { data, error: fetchError, count } = await supabase
         .from("discoveries")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("discovered_by_user_id", user.id)
         .order("discovered_at", { ascending: false })
         .limit(limit)
@@ -55,6 +57,7 @@ export function useDiscoveries(limit: number = 10): UseDiscoveriesReturn {
       }
 
       setDiscoveries(data || [])
+      setTotalCount(count)
     } catch (err) {
       console.error("Error fetching discoveries:", err)
       setError(err instanceof Error ? err.message : "Failed to fetch discoveries")
@@ -90,6 +93,7 @@ export function useDiscoveries(limit: number = 10): UseDiscoveriesReturn {
 
   return {
     discoveries,
+    totalCount,
     loading,
     error,
     refresh: fetchDiscoveries,

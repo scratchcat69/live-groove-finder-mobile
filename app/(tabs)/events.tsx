@@ -18,6 +18,17 @@ import { useEvents, Event, EventAttraction } from "@/src/hooks/useEvents"
 import { SearchBar } from "@/src/components/artists/SearchBar"
 import { useDebounce } from "@/src/hooks/useDebounce"
 
+// Normalize attractions from either string[] (old deployed edge function)
+// or EventAttraction[] (new enriched format) into a consistent shape
+function normalizeAttractions(attractions: (string | EventAttraction)[]): EventAttraction[] {
+  return attractions.map((a, i) => {
+    if (typeof a === "string") {
+      return { id: `str-${i}`, name: a, imageUrl: null, url: null, genre: null }
+    }
+    return a
+  })
+}
+
 function formatDate(dateString: string): string {
   const date = new Date(dateString + "T00:00:00")
   return date.toLocaleDateString("en-US", {
@@ -53,8 +64,8 @@ function EventCard({
   onPress: () => void
   onPerformerPress: (name: string) => void
 }) {
-  // Filter out attractions whose name duplicates the event name
-  const displayAttractions = event.attractions.filter(
+  // Normalize and filter out attractions whose name duplicates the event name
+  const displayAttractions = normalizeAttractions(event.attractions).filter(
     (a) => a.name.toLowerCase() !== event.name.toLowerCase()
   )
 
@@ -116,7 +127,7 @@ function PerformerAvatar({ attraction }: { attraction: EventAttraction }) {
   if (attraction.imageUrl) {
     return <Image source={{ uri: attraction.imageUrl }} style={styles.performerImage} />
   }
-  const initial = attraction.name.charAt(0).toUpperCase()
+  const initial = (attraction.name || "?").charAt(0).toUpperCase()
   return (
     <RNView style={styles.performerInitial}>
       <Text style={styles.performerInitialText}>{initial}</Text>
@@ -190,7 +201,7 @@ export default function EventsScreen() {
     const seen = new Set<string>()
     const performers: EventAttraction[] = []
     for (const event of events) {
-      for (const attraction of event.attractions) {
+      for (const attraction of normalizeAttractions(event.attractions)) {
         if (!seen.has(attraction.id)) {
           seen.add(attraction.id)
           performers.push(attraction)

@@ -3,17 +3,17 @@ import { supabase } from "../services/supabase"
 
 export interface PublicDiscovery {
   id: string
-  song_title: string
-  song_artist: string
+  song_title: string | null
+  song_artist: string | null
   song_metadata: {
     album?: string
     matchType?: string
     confidence?: number
     spotifyUrl?: string
-  }
-  location?: string
-  discovered_at: string
-  discovered_by_user_id: string
+  } | null
+  location?: string | null
+  discovered_at: string | null
+  discovered_by_user_id: string | null
 }
 
 interface UsePublicDiscoveriesReturn {

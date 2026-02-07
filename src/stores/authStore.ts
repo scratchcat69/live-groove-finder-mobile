@@ -28,7 +28,11 @@ interface AuthActions {
 
 type AuthStore = AuthState & AuthActions
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
+export const useAuthStore = create<AuthStore>((set, get) => {
+  // Track the auth listener subscription so we can clean it up
+  let authSubscription: { unsubscribe: () => void } | null = null
+
+  return {
   // State
   user: null,
   session: null,
@@ -42,6 +46,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   initialize: async () => {
     try {
       set({ isLoading: true, error: null })
+
+      // Clean up any existing listener before creating a new one
+      if (authSubscription) {
+        authSubscription.unsubscribe()
+        authSubscription = null
+      }
 
       // Get current session
       const {
@@ -79,21 +89,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         })
       }
 
-      // Listen for auth state changes
-      supabase.auth.onAuthStateChange(async (event, newSession) => {
-        if (event === "SIGNED_IN" && newSession?.user) {
-          const [profile, roles] = await Promise.all([
-            getUserProfile(newSession.user.id),
-            getUserRoles(newSession.user.id),
-          ])
-
-          set({
-            user: newSession.user,
-            session: newSession,
-            profile,
-            roles: roles as AppRole[],
-          })
-        } else if (event === "SIGNED_OUT") {
+      // Listen for auth state changes (token refresh, sign-out from another tab, etc.)
+      // Skip SIGNED_IN since signIn/signUp already handle profile/role fetching
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+        if (event === "SIGNED_OUT") {
           set({
             user: null,
             session: null,
@@ -101,9 +100,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             roles: [],
           })
         } else if (event === "TOKEN_REFRESHED" && newSession) {
-          set({ session: newSession })
+          set({ session: newSession, user: newSession.user })
         }
       })
+      authSubscription = subscription
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to initialize auth"
@@ -213,7 +213,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
-}))
+}})
 
 // Selector hooks for common use cases
 export const useUser = () => useAuthStore((state) => state.user)
