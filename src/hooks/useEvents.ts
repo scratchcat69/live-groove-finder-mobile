@@ -17,6 +17,14 @@ export interface EventPriceRange {
   currency: string
 }
 
+export interface EventAttraction {
+  id: string
+  name: string
+  imageUrl: string | null
+  url: string | null
+  genre: string | null
+}
+
 export interface Event {
   id: string
   name: string
@@ -29,7 +37,7 @@ export interface Event {
   venue: EventVenue | null
   priceRange?: EventPriceRange | null
   genre?: string
-  attractions: string[]
+  attractions: EventAttraction[]
 }
 
 export interface EventsPage {

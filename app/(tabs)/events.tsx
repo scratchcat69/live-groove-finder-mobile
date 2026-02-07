@@ -1,6 +1,7 @@
 import {
   StyleSheet,
   FlatList,
+  ScrollView,
   RefreshControl,
   View as RNView,
   TouchableOpacity,
@@ -8,12 +9,14 @@ import {
   Linking,
   ActivityIndicator,
 } from "react-native"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useFocusEffect } from "@react-navigation/native"
 
 import { Text, View, useThemeColor } from "@/components/Themed"
 import { useLocation } from "@/src/hooks/useLocation"
-import { useEvents, Event } from "@/src/hooks/useEvents"
+import { useEvents, Event, EventAttraction } from "@/src/hooks/useEvents"
+import { SearchBar } from "@/src/components/artists/SearchBar"
+import { useDebounce } from "@/src/hooks/useDebounce"
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString + "T00:00:00")
@@ -41,7 +44,20 @@ function formatPrice(priceRange?: { min: number; max: number; currency: string }
   return `$${priceRange.min} - $${priceRange.max}`
 }
 
-function EventCard({ event, onPress }: { event: Event; onPress: () => void }) {
+function EventCard({
+  event,
+  onPress,
+  onPerformerPress,
+}: {
+  event: Event
+  onPress: () => void
+  onPerformerPress: (name: string) => void
+}) {
+  // Filter out attractions whose name duplicates the event name
+  const displayAttractions = event.attractions.filter(
+    (a) => a.name.toLowerCase() !== event.name.toLowerCase()
+  )
+
   return (
     <TouchableOpacity style={styles.eventCard} onPress={onPress} activeOpacity={0.8}>
       {event.imageUrl ? (
@@ -59,6 +75,22 @@ function EventCard({ event, onPress }: { event: Event; onPress: () => void }) {
         <Text style={styles.eventName} numberOfLines={2}>
           {event.name}
         </Text>
+        {displayAttractions.length > 0 && (
+          <RNView style={styles.eventPerformersRow}>
+            {displayAttractions.map((attraction, index) => (
+              <TouchableOpacity
+                key={attraction.id}
+                onPress={() => onPerformerPress(attraction.name)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.eventPerformers} numberOfLines={1}>
+                  {index > 0 ? " · " : ""}
+                  {attraction.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </RNView>
+        )}
         {event.venue && (
           <Text style={styles.eventVenue} numberOfLines={1}>
             📍 {event.venue.name}
@@ -80,6 +112,18 @@ function EventCard({ event, onPress }: { event: Event; onPress: () => void }) {
   )
 }
 
+function PerformerAvatar({ attraction }: { attraction: EventAttraction }) {
+  if (attraction.imageUrl) {
+    return <Image source={{ uri: attraction.imageUrl }} style={styles.performerImage} />
+  }
+  const initial = attraction.name.charAt(0).toUpperCase()
+  return (
+    <RNView style={styles.performerInitial}>
+      <Text style={styles.performerInitialText}>{initial}</Text>
+    </RNView>
+  )
+}
+
 export default function EventsScreen() {
   const backgroundColor = useThemeColor({}, "background")
   const {
@@ -94,6 +138,7 @@ export default function EventsScreen() {
 
   const [radius, setRadius] = useState(25)
   const [searchKeyword, setSearchKeyword] = useState("")
+  const debouncedKeyword = useDebounce(searchKeyword, 400)
 
   // Fetch events when location is available
   const loadEvents = useCallback(() => {
@@ -102,43 +147,73 @@ export default function EventsScreen() {
         latitude: location.latitude,
         longitude: location.longitude,
         radius,
-        keyword: searchKeyword || undefined,
+        keyword: debouncedKeyword || undefined,
       })
     }
-  }, [location, radius, searchKeyword, fetchEvents])
+  }, [location, radius, debouncedKeyword, fetchEvents])
 
-  // Load events when location changes
+  // Load events when location becomes available
+  const hasLoadedForLocation = useRef(false)
   useEffect(() => {
-    loadEvents()
-  }, [location?.latitude, location?.longitude])
+    if (location && !hasLoadedForLocation.current) {
+      hasLoadedForLocation.current = true
+      loadEvents()
+    }
+  }, [location?.latitude, location?.longitude, loadEvents])
 
-  // Refresh when tab comes into focus
+  // Refetch when debounced keyword or radius changes (after initial load)
+  const hasInitiallyLoaded = useRef(false)
+  useEffect(() => {
+    if (!hasInitiallyLoaded.current) {
+      hasInitiallyLoaded.current = true
+      return
+    }
+    if (location) {
+      loadEvents()
+    }
+  }, [debouncedKeyword, radius])
+
+  // Refresh when tab comes back into focus (skip initial mount)
+  const hasMounted = useRef(false)
   useFocusEffect(
     useCallback(() => {
-      if (location) {
+      if (hasMounted.current && location) {
         loadEvents()
+      } else {
+        hasMounted.current = true
       }
     }, [location, loadEvents])
   )
+
+  // Derive unique performers from loaded events
+  const uniquePerformers = useMemo(() => {
+    const seen = new Set<string>()
+    const performers: EventAttraction[] = []
+    for (const event of events) {
+      for (const attraction of event.attractions) {
+        if (!seen.has(attraction.id)) {
+          seen.add(attraction.id)
+          performers.push(attraction)
+        }
+      }
+    }
+    return performers
+  }, [events])
 
   const radiusOptions = [10, 25, 50, 100]
 
   const handleRadiusSelect = (value: number) => {
     setRadius(value)
-    if (location) {
-      fetchEvents({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        radius: value,
-        keyword: searchKeyword || undefined,
-      })
-    }
   }
 
   const handleEventPress = (event: Event) => {
     if (event.url) {
       Linking.openURL(event.url)
     }
+  }
+
+  const handlePerformerPress = (name: string) => {
+    setSearchKeyword(name)
   }
 
   const handleRequestPermission = async () => {
@@ -180,12 +255,46 @@ export default function EventsScreen() {
     ? `${location.city}${location.region ? `, ${location.region}` : ""}`
     : "Your Area"
 
+  const listHeader = uniquePerformers.length > 0 ? (
+    <RNView style={styles.carouselSection}>
+      <Text style={styles.carouselTitle}>
+        Performing Nearby ({uniquePerformers.length})
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.carouselContent}
+      >
+        {uniquePerformers.map((performer) => (
+          <TouchableOpacity
+            key={performer.id}
+            style={styles.performerCard}
+            onPress={() => handlePerformerPress(performer.name)}
+            activeOpacity={0.7}
+          >
+            <PerformerAvatar attraction={performer} />
+            <Text style={styles.performerName} numberOfLines={1}>
+              {performer.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </RNView>
+  ) : null
+
   return (
     <RNView style={[styles.container, { backgroundColor }]}>
       {/* Filter Bar */}
       <View style={styles.filterBar}>
         <RNView style={styles.locationInfo}>
           <Text style={styles.locationLabel}>📍 {locationDisplay}</Text>
+        </RNView>
+        <RNView style={styles.searchBarContainer}>
+          <SearchBar
+            value={searchKeyword}
+            onChangeText={setSearchKeyword}
+            placeholder="Search events or artists..."
+          />
         </RNView>
         <RNView style={styles.radiusControl}>
           <Text style={styles.radiusLabel}>Radius</Text>
@@ -218,8 +327,13 @@ export default function EventsScreen() {
         data={events}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <EventCard event={item} onPress={() => handleEventPress(item)} />
+          <EventCard
+            event={item}
+            onPress={() => handleEventPress(item)}
+            onPerformerPress={handlePerformerPress}
+          />
         )}
+        ListHeaderComponent={listHeader}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl
@@ -284,6 +398,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  searchBarContainer: {
+    marginBottom: 12,
+  },
   radiusControl: {
     gap: 8,
   },
@@ -313,6 +430,49 @@ const styles = StyleSheet.create({
     opacity: 1,
     fontWeight: "600",
   },
+  // Performing Nearby carousel
+  carouselSection: {
+    marginBottom: 16,
+  },
+  carouselTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+    marginBottom: 12,
+  },
+  carouselContent: {
+    gap: 16,
+  },
+  performerCard: {
+    alignItems: "center",
+    width: 72,
+  },
+  performerImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#333",
+  },
+  performerInitial: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#6366f1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  performerInitialText: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  performerName: {
+    fontSize: 11,
+    color: "#fff",
+    marginTop: 6,
+    textAlign: "center",
+  },
+  // Event card
   listContent: {
     flexGrow: 1,
     padding: 16,
@@ -362,7 +522,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: "#fff",
+    marginBottom: 4,
+  },
+  eventPerformersRow: {
+    flexDirection: "row",
+    flexWrap: "nowrap",
+    overflow: "hidden",
     marginBottom: 8,
+  },
+  eventPerformers: {
+    fontSize: 14,
+    color: "#6366f1",
+    fontWeight: "500",
   },
   eventVenue: {
     fontSize: 14,

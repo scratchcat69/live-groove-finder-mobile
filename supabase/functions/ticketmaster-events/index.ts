@@ -54,6 +54,18 @@ interface TicketmasterEvent {
       id: string
       name: string
       type: string
+      images?: Array<{
+        url: string
+        ratio?: string
+        width?: number
+        height?: number
+      }>
+      url?: string
+      classifications?: Array<{
+        segment?: { name: string }
+        genre?: { name: string }
+        subGenre?: { name: string }
+      }>
     }>
   }
   priceRanges?: Array<{
@@ -147,7 +159,18 @@ serve(async (req) => {
         || event.images?.[0]
       const priceRange = event.priceRanges?.[0]
       const genre = event.classifications?.[0]?.genre?.name
-      const attractions = event._embedded?.attractions?.map(a => a.name) || []
+      const attractions = (event._embedded?.attractions || []).map(a => {
+        const attractionImage = a.images?.find(img => img.ratio === "16_9" && (img.width || 0) >= 200)
+          || a.images?.find(img => img.ratio === "1_1")
+          || a.images?.[0]
+        return {
+          id: a.id,
+          name: a.name,
+          imageUrl: attractionImage?.url || null,
+          url: a.url || null,
+          genre: a.classifications?.[0]?.genre?.name || null,
+        }
+      })
 
       return {
         id: event.id,
