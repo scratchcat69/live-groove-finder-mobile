@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const TICKETMASTER_API_KEY = Deno.env.get("TICKETMASTER_API_KEY") || "QBXcrIkba6KZyyauM1Vj0uNVkmbCCIT3"
+const TICKETMASTER_API_KEY = Deno.env.get("TICKETMASTER_API_KEY")
+if (!TICKETMASTER_API_KEY) {
+  throw new Error("TICKETMASTER_API_KEY environment variable is required")
+}
 const TICKETMASTER_BASE_URL = "https://app.ticketmaster.com/discovery/v2"
 
 const corsHeaders = {
@@ -108,14 +111,27 @@ serve(async (req) => {
       )
     }
 
+    // Validate coordinate ranges
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid coordinates" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
+
+    // Clamp pagination and size to safe ranges
+    const safeRadius = Math.max(1, Math.min(radius, 200))
+    const safeSize = Math.max(1, Math.min(size, 50))
+    const safePage = Math.max(0, Math.min(page, 100))
+
     // Build query params
     const params = new URLSearchParams({
       apikey: TICKETMASTER_API_KEY,
       latlong: `${latitude},${longitude}`,
-      radius: radius.toString(),
+      radius: safeRadius.toString(),
       unit: "miles",
-      size: size.toString(),
-      page: page.toString(),
+      size: safeSize.toString(),
+      page: safePage.toString(),
       sort: "date,asc",
     })
 
@@ -136,13 +152,10 @@ serve(async (req) => {
     }
 
     const url = `${TICKETMASTER_BASE_URL}/events.json?${params.toString()}`
-    console.log("Fetching events from:", url.replace(TICKETMASTER_API_KEY, "***"))
-
     const response = await fetch(url)
     const data = await response.json()
 
     if (!response.ok) {
-      console.error("Ticketmaster API error:", data)
       return new Response(
         JSON.stringify({
           success: false,
@@ -207,7 +220,7 @@ serve(async (req) => {
         success: true,
         events,
         page: {
-          size: pageInfo.size || size,
+          size: pageInfo.size || safeSize,
           totalElements: pageInfo.totalElements || 0,
           totalPages: pageInfo.totalPages || 0,
           number: pageInfo.number || 0,

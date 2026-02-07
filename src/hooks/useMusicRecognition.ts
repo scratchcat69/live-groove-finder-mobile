@@ -46,21 +46,14 @@ export function useMusicRecognition(): UseMusicRecognitionReturn {
       setStatus("recognizing")
       setResult(null)
 
-      console.log("=== RECOGNITION START ===")
-      console.log("Audio base64 length:", audioBase64?.length)
-      console.log("User ID:", user?.id)
-
       try {
-        // Use direct fetch instead of supabase.functions.invoke to handle large payloads
         const functionUrl = `${SUPABASE_URL}/functions/v1/recognize-music`
-        console.log("Calling Edge Function directly:", functionUrl)
 
         const requestBody = JSON.stringify({
           audioBase64,
           userId: user?.id,
           location,
         })
-        console.log("Request body length:", requestBody.length)
 
         const response = await fetch(functionUrl, {
           method: "POST",
@@ -72,16 +65,12 @@ export function useMusicRecognition(): UseMusicRecognitionReturn {
           body: requestBody,
         })
 
-        console.log("Response status:", response.status)
-
         if (!response.ok) {
           const errorText = await response.text()
-          console.log("Response error text:", errorText)
           throw new Error(`Edge Function error: ${response.status} - ${errorText}`)
         }
 
         const data = await response.json()
-        console.log("Response data:", data)
 
         const recognitionResult = data as RecognitionResult
 

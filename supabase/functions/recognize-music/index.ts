@@ -82,13 +82,8 @@ async function recognizeWithACRCloud(
   const timestamp = Math.floor(Date.now() / 1000)
   const signature = await generateSignature(accessKey, accessSecret, timestamp)
 
-  console.log("Timestamp:", timestamp)
-  console.log("Signature generated, length:", signature.length)
-  console.log("Audio base64 length:", audioBase64.length)
-
   // Decode base64 to get raw audio bytes
   const audioBytes = decodeBase64(audioBase64)
-  console.log("Audio bytes length:", audioBytes.length)
 
   const formData = new FormData()
   formData.append("access_key", accessKey)
@@ -99,15 +94,12 @@ async function recognizeWithACRCloud(
   formData.append("sample_bytes", audioBytes.length.toString())
   formData.append("sample", new Blob([audioBytes], { type: "audio/m4a" }), "sample.m4a")
 
-  console.log("Sending request to ACRCloud:", `https://${host}/v1/identify`)
-
   const response = await fetch(`https://${host}/v1/identify`, {
     method: "POST",
     body: formData,
   })
 
   const responseText = await response.text()
-  console.log("ACRCloud raw response:", responseText)
 
   if (!response.ok) {
     throw new Error(`ACRCloud API error: ${response.status} ${response.statusText} - ${responseText}`)
@@ -125,35 +117,72 @@ Deno.serve(async (req) => {
   try {
     const { audioBase64, userId, location } = await req.json()
 
-    if (!audioBase64) {
+    if (!audioBase64 || typeof audioBase64 !== "string") {
       return new Response(
         JSON.stringify({ success: false, error: "No audio data provided" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       )
     }
 
-    console.log("Received audio data, length:", audioBase64.length)
+    // ~1MB base64 limit (roughly 10s of 44.1kHz mono audio)
+    const MAX_AUDIO_BASE64_LENGTH = 1_400_000
+    if (audioBase64.length > MAX_AUDIO_BASE64_LENGTH) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Audio data too large" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      )
+    }
+
+    // Validate location if provided
+    if (location) {
+      if (location.latitude !== undefined && (location.latitude < -90 || location.latitude > 90)) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid latitude" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        )
+      }
+      if (location.longitude !== undefined && (location.longitude < -180 || location.longitude > 180)) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid longitude" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        )
+      }
+    }
+
+    // Rate limit: max 20 recognition attempts per user per hour
+    if (userId) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+      if (supabaseUrl && supabaseKey) {
+        const supabase = createClient(supabaseUrl, supabaseKey)
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+        const { count } = await supabase
+          .from("discoveries")
+          .select("id", { count: "exact", head: true })
+          .eq("discovered_by_user_id", userId)
+          .gte("discovered_at", oneHourAgo)
+        if (count !== null && count >= 20) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Rate limit exceeded. Try again later." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          )
+        }
+      }
+    }
 
     // Get ACRCloud credentials from environment
     const accessKey = Deno.env.get("ACRCLOUD_ACCESS_KEY")
     const accessSecret = Deno.env.get("ACRCLOUD_ACCESS_SECRET")
     const host = Deno.env.get("ACRCLOUD_HOST") || "identify-us-west-2.acrcloud.com"
 
-    console.log("ACRCloud host:", host)
-    console.log("Access key present:", !!accessKey)
-    console.log("Access secret present:", !!accessSecret)
-
     if (!accessKey || !accessSecret) {
-      console.error("ACRCloud credentials not configured")
       return new Response(
         JSON.stringify({ success: false, error: "Recognition service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       )
     }
 
-    console.log("Calling ACRCloud API...")
     const acrResult = await recognizeWithACRCloud(audioBase64, accessKey, accessSecret, host)
-    console.log("ACRCloud response code:", acrResult.status.code, acrResult.status.msg)
 
     let response: RecognitionResponse
 
@@ -165,8 +194,6 @@ Deno.serve(async (req) => {
     if (acrResult.status.code === 0 && acrResult.metadata?.music?.length) {
       const match = acrResult.metadata.music[0]
       const confidence = match.score
-
-      console.log("Music match confidence:", confidence)
 
       if (confidence >= MIN_CONFIDENCE) {
         const spotifyId = match.external_metadata?.spotify?.track?.id
@@ -196,8 +223,6 @@ Deno.serve(async (req) => {
     else if (acrResult.status.code === 0 && acrResult.metadata?.humming?.length) {
       const match = acrResult.metadata.humming[0]
       const confidence = match.score
-
-      console.log("Humming match confidence:", confidence)
 
       if (confidence >= MIN_CONFIDENCE) {
         response = {
@@ -233,11 +258,6 @@ Deno.serve(async (req) => {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
 
-      console.log("Attempting to save discovery...")
-      console.log("SUPABASE_URL present:", !!supabaseUrl)
-      console.log("SERVICE_ROLE_KEY present:", !!supabaseKey)
-      console.log("User ID:", userId)
-
       if (supabaseUrl && supabaseKey) {
         const supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -258,9 +278,7 @@ Deno.serve(async (req) => {
         }).select()
 
         if (error) {
-          console.error("Database insert error:", error.message, error.details, error.hint)
-        } else {
-          console.log("Discovery saved to database:", data)
+          console.error("Database insert error:", error.message)
         }
       } else {
         console.error("Missing Supabase credentials for database save")

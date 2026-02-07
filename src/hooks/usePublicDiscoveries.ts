@@ -35,7 +35,7 @@ export function usePublicDiscoveries(limit: number = 50): UsePublicDiscoveriesRe
 
       const { data, error: fetchError } = await supabase
         .from("discoveries")
-        .select("*")
+        .select("id, song_title, song_artist, song_metadata, location, discovered_at, discovered_by_user_id")
         .order("discovered_at", { ascending: false })
         .limit(limit)
 
