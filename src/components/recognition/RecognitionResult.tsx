@@ -1,5 +1,5 @@
 import React from "react"
-import { StyleSheet, TouchableOpacity, Linking, View as RNView } from "react-native"
+import { StyleSheet, TouchableOpacity, Linking, Share, View as RNView } from "react-native"
 import { Text, View } from "@/components/Themed"
 import { RecognizedSong } from "@/src/hooks/useMusicRecognition"
 
@@ -13,6 +13,16 @@ export function RecognitionResult({ song, onDismiss, onSave }: RecognitionResult
   const openSpotify = () => {
     if (song.spotifyUrl) {
       Linking.openURL(song.spotifyUrl)
+    }
+  }
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `I discovered "${song.title}" by ${song.artist} on Live Groove Finder!${song.spotifyUrl ? `\nListen: ${song.spotifyUrl}` : ""}`,
+      })
+    } catch {
+      // User cancelled share
     }
   }
 
@@ -67,6 +77,10 @@ export function RecognitionResult({ song, onDismiss, onSave }: RecognitionResult
               <Text style={styles.saveButtonText}>Save</Text>
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+            <Text style={styles.shareButtonText}>Share</Text>
+          </TouchableOpacity>
         </RNView>
 
         <TouchableOpacity style={styles.dismissButton} onPress={onDismiss}>
@@ -226,6 +240,16 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   saveButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  shareButton: {
+    backgroundColor: "#333",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  shareButtonText: {
     color: "#fff",
     fontWeight: "600",
   },

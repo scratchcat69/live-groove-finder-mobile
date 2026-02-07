@@ -14,12 +14,15 @@ import { useLocation } from "@/src/hooks/useLocation"
 import { useDebounce } from "@/src/hooks/useDebounce"
 import { useDistanceUnit } from "@/src/hooks/useDistanceUnit"
 import { useNearbyArtists, NearbyArtist } from "@/src/hooks/useNearbyArtists"
+import { useNearbyVenues, NearbyVenue } from "@/src/hooks/useNearbyVenues"
 import { useFavorites } from "@/src/hooks/useFavorites"
 import { convertRadiusToKm } from "@/src/utils/distanceUtils"
 import { ArtistCard } from "@/src/components/artists/ArtistCard"
 import { SearchBar } from "@/src/components/artists/SearchBar"
 import { GenreFilter } from "@/src/components/artists/GenreFilter"
 import { RadiusSelector } from "@/src/components/artists/RadiusSelector"
+import { SegmentedControl } from "@/src/components/common/SegmentedControl"
+import { VenueCard } from "@/src/components/venues/VenueCard"
 
 export default function ArtistsScreen() {
   const backgroundColor = useThemeColor({}, "background")
@@ -34,6 +37,7 @@ export default function ArtistsScreen() {
     refreshLocation,
   } = useLocation()
 
+  const [segment, setSegment] = useState<"artists" | "venues">("artists")
   const [searchText, setSearchText] = useState("")
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [radius, setRadius] = useState(25)
@@ -57,7 +61,19 @@ export default function ArtistsScreen() {
     enabled: !!location,
   })
 
+  const {
+    data: venues = [],
+    isLoading: venuesLoading,
+    refetch: refetchVenues,
+  } = useNearbyVenues({
+    latitude: location?.latitude ?? 0,
+    longitude: location?.longitude ?? 0,
+    radiusKm,
+    enabled: !!location,
+  })
+
   const { isFavorite, toggleFavorite } = useFavorites("artist")
+  const { isFavorite: isVenueFavorite, toggleFavorite: toggleVenueFavorite } = useFavorites("venue")
 
   const handleGenreToggle = useCallback((genre: string) => {
     setSelectedGenres((prev) =>
@@ -70,6 +86,13 @@ export default function ArtistsScreen() {
   const handleArtistPress = useCallback(
     (artist: NearbyArtist) => {
       router.push(`/(tabs)/artists/${artist.id}` as any)
+    },
+    [router]
+  )
+
+  const handleVenuePress = useCallback(
+    (venue: NearbyVenue) => {
+      router.push(`/(tabs)/artists/venue/${venue.id}` as any)
     },
     [router]
   )
@@ -128,54 +151,103 @@ export default function ArtistsScreen() {
         <RNView style={styles.searchRow}>
           <SearchBar value={searchText} onChangeText={setSearchText} />
         </RNView>
+        <RNView style={styles.segmentRow}>
+          <SegmentedControl
+            segments={["Artists", "Venues"]}
+            activeIndex={segment === "artists" ? 0 : 1}
+            onChange={(i) => setSegment(i === 0 ? "artists" : "venues")}
+          />
+        </RNView>
         <RadiusSelector
           value={radius}
           onValueChange={setRadius}
           unit={unit}
         />
-        <GenreFilter selected={selectedGenres} onToggle={handleGenreToggle} />
+        {segment === "artists" && (
+          <GenreFilter selected={selectedGenres} onToggle={handleGenreToggle} />
+        )}
       </RNView>
 
-      {/* Artist List */}
-      <FlashList
-        data={artists}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ArtistCard
-            artist={item}
-            distanceUnit={unit}
-            isFavorite={isFavorite(item.id)}
-            onPress={() => handleArtistPress(item)}
-            onToggleFavorite={() => toggleFavorite(item.id)}
-          />
-        )}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={() => <RNView style={styles.separator} />}
-        refreshControl={
-          <RefreshControl
-            refreshing={artistsLoading && artists.length === 0}
-            onRefresh={refetch}
-            tintColor="#6366f1"
-          />
-        }
-        ListEmptyComponent={
-          artistsLoading ? (
-            <RNView style={styles.emptyContainer}>
-              <ActivityIndicator size="large" color="#6366f1" />
-            </RNView>
-          ) : (
-            <RNView style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>🎸</Text>
-              <Text style={styles.emptyTitle}>No Artists Found</Text>
-              <Text style={styles.emptyText}>
-                {debouncedSearch
-                  ? `No results for "${debouncedSearch}". Try a different search.`
-                  : `No artists found within ${radius} ${unit}. Try increasing the radius.`}
-              </Text>
-            </RNView>
-          )
-        }
-      />
+      {/* List */}
+      {segment === "artists" ? (
+        <FlashList
+          data={artists}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <ArtistCard
+              artist={item}
+              distanceUnit={unit}
+              isFavorite={isFavorite(item.id)}
+              onPress={() => handleArtistPress(item)}
+              onToggleFavorite={() => toggleFavorite(item.id)}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={() => <RNView style={styles.separator} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={artistsLoading && artists.length === 0}
+              onRefresh={refetch}
+              tintColor="#6366f1"
+            />
+          }
+          ListEmptyComponent={
+            artistsLoading ? (
+              <RNView style={styles.emptyContainer}>
+                <ActivityIndicator size="large" color="#6366f1" />
+              </RNView>
+            ) : (
+              <RNView style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>🎸</Text>
+                <Text style={styles.emptyTitle}>No Artists Found</Text>
+                <Text style={styles.emptyText}>
+                  {debouncedSearch
+                    ? `No results for "${debouncedSearch}". Try a different search.`
+                    : `No artists found within ${radius} ${unit}. Try increasing the radius.`}
+                </Text>
+              </RNView>
+            )
+          }
+        />
+      ) : (
+        <FlashList
+          data={venues}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <VenueCard
+              venue={item}
+              distanceUnit={unit}
+              isFavorite={isVenueFavorite(item.id)}
+              onPress={() => handleVenuePress(item)}
+              onToggleFavorite={() => toggleVenueFavorite(item.id)}
+            />
+          )}
+          contentContainerStyle={styles.listContent}
+          ItemSeparatorComponent={() => <RNView style={styles.separator} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={venuesLoading && venues.length === 0}
+              onRefresh={refetchVenues}
+              tintColor="#6366f1"
+            />
+          }
+          ListEmptyComponent={
+            venuesLoading ? (
+              <RNView style={styles.emptyContainer}>
+                <ActivityIndicator size="large" color="#6366f1" />
+              </RNView>
+            ) : (
+              <RNView style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>🏛️</Text>
+                <Text style={styles.emptyTitle}>No Venues Found</Text>
+                <Text style={styles.emptyText}>
+                  {`No venues found within ${radius} ${unit}. Try increasing the radius.`}
+                </Text>
+              </RNView>
+            )
+          }
+        />
+      )}
     </RNView>
   )
 }
@@ -209,6 +281,9 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   searchRow: {
+    paddingHorizontal: 16,
+  },
+  segmentRow: {
     paddingHorizontal: 16,
   },
   listContent: {

@@ -16,6 +16,7 @@ import { useDiscoveries, Discovery } from "@/src/hooks/useDiscoveries"
 import { useFollowingCount } from "@/src/hooks/useFollowingCount"
 import { useFavorites } from "@/src/hooks/useFavorites"
 import { useFavoriteArtists, FavoriteArtistInfo } from "@/src/hooks/useFavoriteArtists"
+import { useCheckins, CheckinRow } from "@/src/hooks/useCheckins"
 
 function DiscoveryRow({
   discovery,
@@ -92,6 +93,29 @@ function FavoriteArtistRow({
   )
 }
 
+function CheckinRowItem({ checkin }: { checkin: CheckinRow }) {
+  const eventName = checkin.events?.name ?? "Unknown Event"
+  const venue = checkin.events?.venues
+  const venueText = venue ? `${venue.name}, ${venue.location}` : ""
+  const stars = checkin.rating ? "\u2605".repeat(checkin.rating) + "\u2606".repeat(5 - checkin.rating) : ""
+  const dateText = checkin.checked_in_at ? new Date(checkin.checked_in_at).toLocaleDateString() : ""
+
+  return (
+    <RNView style={styles.discoveryRow}>
+      <RNView style={[styles.discoveryIcon, { backgroundColor: "#22c55e" }]}>
+        <Text style={styles.discoveryIconText}>{"\u2713"}</Text>
+      </RNView>
+      <RNView style={styles.discoveryContent}>
+        <Text style={styles.discoveryTitle} numberOfLines={1}>{eventName}</Text>
+        {venueText ? <Text style={styles.discoveryArtist} numberOfLines={1}>{"\uD83D\uDCCD"} {venueText}</Text> : null}
+        {stars ? <Text style={{ fontSize: 13, color: "#f59e0b" }}>{stars}</Text> : null}
+        {checkin.review ? <Text style={{ fontSize: 12, color: "#aaa", fontStyle: "italic" }} numberOfLines={1}>"{checkin.review}"</Text> : null}
+      </RNView>
+      <Text style={styles.discoveryDate}>{dateText}</Text>
+    </RNView>
+  )
+}
+
 export default function ProfileScreen() {
   const profile = useProfile()
   const roles = useRoles()
@@ -103,6 +127,7 @@ export default function ProfileScreen() {
   const { count: followingCount } = useFollowingCount()
   const { favoriteIds, count: favoritesCount } = useFavorites("artist")
   const { data: favoriteArtists = [] } = useFavoriteArtists(favoriteIds())
+  const { checkins, count: checkinCount } = useCheckins()
 
   // Refresh discoveries when tab comes back into focus (skip initial mount)
   const hasMounted = useRef(false)
@@ -174,6 +199,10 @@ export default function ProfileScreen() {
             <Text style={styles.statNumber}>{favoritesCount}</Text>
             <Text style={styles.statLabel}>Favorites</Text>
           </View>
+          <View style={styles.stat}>
+            <Text style={styles.statNumber}>{checkinCount}</Text>
+            <Text style={styles.statLabel}>Check-ins</Text>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -194,6 +223,18 @@ export default function ProfileScreen() {
             ))
           )}
         </View>
+
+        {/* Concert History Section */}
+        <RNView style={styles.section}>
+          <Text style={styles.sectionTitle}>Concert History ({checkinCount})</Text>
+          {checkins.length > 0 ? (
+            checkins.map((checkin) => (
+              <CheckinRowItem key={checkin.id} checkin={checkin} />
+            ))
+          ) : (
+            <Text style={styles.emptyText}>Your concert check-ins will appear here</Text>
+          )}
+        </RNView>
 
         {favoriteArtists.length > 0 && (
           <View style={styles.section}>

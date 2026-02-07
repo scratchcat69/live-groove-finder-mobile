@@ -6,13 +6,19 @@ export default function ArtistsLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: "Nearby Artists",
+          title: "Explore",
         }}
       />
       <Stack.Screen
         name="[id]"
         options={{
           title: "Artist",
+        }}
+      />
+      <Stack.Screen
+        name="venue/[id]"
+        options={{
+          title: "Venue",
         }}
       />
     </Stack>

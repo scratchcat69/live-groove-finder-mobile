@@ -8,6 +8,7 @@ import {
   Image,
   Linking,
   ActivityIndicator,
+  Alert,
 } from "react-native"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useFocusEffect } from "@react-navigation/native"
@@ -17,6 +18,8 @@ import { useLocation } from "@/src/hooks/useLocation"
 import { useEvents, Event, EventAttraction } from "@/src/hooks/useEvents"
 import { SearchBar } from "@/src/components/artists/SearchBar"
 import { useDebounce } from "@/src/hooks/useDebounce"
+import { useCheckins } from "@/src/hooks/useCheckins"
+import { CheckInModal } from "@/src/components/events/CheckInModal"
 
 // Normalize attractions from either string[] (old deployed edge function)
 // or EventAttraction[] (new enriched format) into a consistent shape
@@ -59,10 +62,14 @@ function EventCard({
   event,
   onPress,
   onPerformerPress,
+  onCheckIn,
+  checkedIn,
 }: {
   event: Event
   onPress: () => void
   onPerformerPress: (name: string) => void
+  onCheckIn: () => void
+  checkedIn: boolean
 }) {
   // Normalize and filter out attractions whose name duplicates the event name
   const displayAttractions = normalizeAttractions(event.attractions).filter(
@@ -117,6 +124,24 @@ function EventCard({
           {event.priceRange && (
             <Text style={styles.priceText}>{formatPrice(event.priceRange)}</Text>
           )}
+          <TouchableOpacity
+            style={[
+              styles.checkInButton,
+              checkedIn && styles.checkInButtonChecked,
+            ]}
+            onPress={onCheckIn}
+            disabled={checkedIn}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.checkInButtonText,
+                checkedIn && styles.checkInButtonTextChecked,
+              ]}
+            >
+              {checkedIn ? "\u2713 Checked In" : "Check In"}
+            </Text>
+          </TouchableOpacity>
         </RNView>
       </RNView>
     </TouchableOpacity>
@@ -146,6 +171,10 @@ export default function EventsScreen() {
     refreshLocation,
   } = useLocation()
   const { events, loading: eventsLoading, error: eventsError, fetchEvents, loadMore, hasMore } = useEvents()
+
+  const { isCheckedIn, createCheckin } = useCheckins()
+  const [checkInEvent, setCheckInEvent] = useState<Event | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [radius, setRadius] = useState(25)
   const [searchKeyword, setSearchKeyword] = useState("")
@@ -225,6 +254,25 @@ export default function EventsScreen() {
 
   const handlePerformerPress = (name: string) => {
     setSearchKeyword(name)
+  }
+
+  const handleCheckIn = async (rating: number, review: string) => {
+    if (!checkInEvent) return
+    setIsSubmitting(true)
+    const success = await createCheckin({
+      eventName: checkInEvent.name,
+      eventDate: checkInEvent.date,
+      eventDescription: checkInEvent.venue ? `${checkInEvent.venue.name}, ${checkInEvent.venue.city}` : undefined,
+      rating,
+      review,
+    })
+    setIsSubmitting(false)
+    if (success) {
+      setCheckInEvent(null)
+      Alert.alert("Checked In!", "Your check-in has been saved.")
+    } else {
+      Alert.alert("Error", "Failed to check in. You may have already checked in to this event.")
+    }
   }
 
   const handleRequestPermission = async () => {
@@ -342,6 +390,8 @@ export default function EventsScreen() {
             event={item}
             onPress={() => handleEventPress(item)}
             onPerformerPress={handlePerformerPress}
+            onCheckIn={() => setCheckInEvent(item)}
+            checkedIn={isCheckedIn(item.name, item.date)}
           />
         )}
         ListHeaderComponent={listHeader}
@@ -379,6 +429,14 @@ export default function EventsScreen() {
             </RNView>
           )
         }
+      />
+
+      <CheckInModal
+        visible={!!checkInEvent}
+        eventName={checkInEvent?.name ?? ""}
+        onSubmit={handleCheckIn}
+        onClose={() => setCheckInEvent(null)}
+        isSubmitting={isSubmitting}
       />
     </RNView>
   )
@@ -572,6 +630,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     color: "#1DB954",
+  },
+  checkInButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#22c55e",
+    backgroundColor: "transparent",
+  },
+  checkInButtonChecked: {
+    backgroundColor: "#22c55e",
+    borderColor: "#22c55e",
+  },
+  checkInButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#22c55e",
+  },
+  checkInButtonTextChecked: {
+    color: "#fff",
   },
   loadingMore: {
     paddingVertical: 20,

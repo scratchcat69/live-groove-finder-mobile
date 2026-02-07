@@ -1,6 +1,7 @@
-import { StyleSheet, FlatList, RefreshControl, View as RNView, TouchableOpacity, Alert } from "react-native"
+import { StyleSheet, FlatList, RefreshControl, View as RNView, TouchableOpacity, Alert, Share, Image } from "react-native"
 import { useCallback, useRef } from "react"
 import { useFocusEffect } from "@react-navigation/native"
+import FontAwesome from "@expo/vector-icons/FontAwesome"
 
 import { Text, View, useThemeColor } from "@/components/Themed"
 import { usePublicDiscoveries, PublicDiscovery } from "@/src/hooks/usePublicDiscoveries"
@@ -22,6 +23,31 @@ function getTimeAgo(dateString: string | null): string {
   return `${diffDays}d ago`
 }
 
+function UserAvatar({ profile }: { profile?: PublicDiscovery["profiles"] }) {
+  if (profile?.avatar_url) {
+    return <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+  }
+  const initial = (profile?.username ?? "?")[0]?.toUpperCase() ?? "?"
+  return (
+    <RNView style={styles.avatarFallback}>
+      <Text style={styles.avatarText}>{initial}</Text>
+    </RNView>
+  )
+}
+
+async function handleShare(discovery: PublicDiscovery) {
+  const title = discovery.song_title ?? "Unknown"
+  const artist = discovery.song_artist ?? "Unknown"
+  const spotifyUrl = discovery.song_metadata?.spotifyUrl
+  try {
+    await Share.share({
+      message: `I discovered "${title}" by ${artist} on Live Groove Finder!${spotifyUrl ? `\nListen: ${spotifyUrl}` : ""}`,
+    })
+  } catch {
+    // User cancelled share
+  }
+}
+
 function DiscoveryCard({
   discovery,
   currentUserId,
@@ -34,6 +60,7 @@ function DiscoveryCard({
   const timeAgo = getTimeAgo(discovery.discovered_at)
   const matchType = discovery.song_metadata && discovery.song_metadata.matchType === "melody" ? "Humming" : "Audio"
   const isOwner = currentUserId != null && currentUserId === discovery.discovered_by_user_id
+  const username = discovery.profiles?.username ?? "Anonymous"
 
   const handleDelete = () => {
     Alert.alert(
@@ -53,11 +80,16 @@ function DiscoveryCard({
   return (
     <View style={styles.card}>
       <RNView style={styles.cardHeader}>
-        <RNView style={styles.matchBadge}>
-          <Text style={styles.matchBadgeText}>{matchType}</Text>
+        <RNView style={styles.userInfo}>
+          <UserAvatar profile={discovery.profiles} />
+          <Text style={styles.username} numberOfLines={1}>{username}</Text>
+          <Text style={styles.dot}>·</Text>
+          <Text style={styles.timeAgo}>{timeAgo}</Text>
         </RNView>
         <RNView style={styles.headerRight}>
-          <Text style={styles.timeAgo}>{timeAgo}</Text>
+          <RNView style={styles.matchBadge}>
+            <Text style={styles.matchBadgeText}>{matchType}</Text>
+          </RNView>
           {isOwner && (
             <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
               <Text style={styles.deleteButtonText}>✕</Text>
@@ -85,9 +117,18 @@ function DiscoveryCard({
         </RNView>
       </RNView>
 
-      {discovery.location && (
-        <Text style={styles.location}>📍 {discovery.location}</Text>
-      )}
+      <RNView style={styles.cardFooter}>
+        {discovery.location && (
+          <Text style={styles.location}>📍 {discovery.location}</Text>
+        )}
+        <TouchableOpacity
+          onPress={() => handleShare(discovery)}
+          style={styles.shareButton}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <FontAwesome name="share-alt" size={14} color="#aaa" />
+        </TouchableOpacity>
+      </RNView>
     </View>
   )
 }
@@ -172,6 +213,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
+  userInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: 6,
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+  },
+  avatarFallback: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#6366f1",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  username: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#fff",
+    maxWidth: 100,
+  },
+  dot: {
+    fontSize: 12,
+    color: "#555",
+  },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
@@ -225,10 +300,19 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     marginTop: 2,
   },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 12,
+  },
   location: {
     fontSize: 12,
     opacity: 0.6,
-    marginTop: 12,
+    flex: 1,
+  },
+  shareButton: {
+    padding: 6,
   },
   emptyContainer: {
     flex: 1,

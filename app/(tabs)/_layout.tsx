@@ -39,8 +39,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="artists"
         options={{
-          title: "Artists",
-          tabBarIcon: ({ color }) => <TabBarIcon name="music" color={color} />,
+          title: "Explore",
+          tabBarIcon: ({ color }) => <TabBarIcon name="compass" color={color} />,
           headerShown: false,
         }}
       />

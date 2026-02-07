@@ -65,6 +65,11 @@ export const queryKeys = {
     detail: (id: string) => ["venues", "detail", id] as const,
   },
 
+  // Check-ins
+  checkins: {
+    byUser: (userId: string) => ["checkins", "byUser", userId] as const,
+  },
+
   // Favorites
   favorites: {
     all: (userId: string) => ["favorites", userId] as const,
