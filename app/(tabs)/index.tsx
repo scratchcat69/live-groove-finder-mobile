@@ -1,5 +1,7 @@
 import { StyleSheet, Alert, ScrollView, TouchableOpacity } from "react-native"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useState } from "react"
+import { useQueryClient } from "@tanstack/react-query"
+import { useRouter } from "expo-router"
 
 import { Text, View } from "@/components/Themed"
 import { RecognitionButton } from "@/src/components/recognition/RecognitionButton"
@@ -11,6 +13,12 @@ import { useAudioRecording } from "@/src/hooks/useAudioRecording"
 import { useMusicRecognition } from "@/src/hooks/useMusicRecognition"
 import { useDiscoveries, Discovery } from "@/src/hooks/useDiscoveries"
 import { useLocation } from "@/src/hooks/useLocation"
+import { useRecognitionUsage } from "@/src/hooks/useRecognitionUsage"
+import { useSubscription } from "@/src/hooks/useSubscription"
+import { PaywallModal } from "@/src/components/subscription/PaywallModal"
+import { UsageBadge } from "@/src/components/subscription/UsageBadge"
+import { queryKeys } from "@/src/services/queryClient"
+import { useAuthStore } from "@/src/stores/authStore"
 
 function DiscoveryItem({
   discovery,
@@ -81,6 +89,11 @@ export default function DiscoverScreen() {
   } = useMusicRecognition()
 
   const { location } = useLocation()
+  const { count: usageCount, limit: usageLimit, canRecognize } = useRecognitionUsage()
+  const { isPremium } = useSubscription()
+  const [showPaywall, setShowPaywall] = useState(false)
+  const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
 
   // Build location data for recognition (attaches to saved discoveries)
   const getLocationData = useCallback(() => {
@@ -121,12 +134,15 @@ export default function DiscoverScreen() {
     }
   }, [deleteDiscovery])
 
-  // Refresh discoveries when a song is successfully recognized
+  // Refresh discoveries and usage count when a song is successfully recognized
   useEffect(() => {
     if (recognitionStatus === "success") {
       refreshDiscoveries()
+      if (user?.id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.recognitionUsage.byUser(user.id) })
+      }
     }
-  }, [recognitionStatus, refreshDiscoveries])
+  }, [recognitionStatus, refreshDiscoveries, queryClient, user?.id])
 
   const isListening = recordingStatus === "recording"
   const isProcessing =
@@ -145,6 +161,11 @@ export default function DiscoverScreen() {
         await recognize(audioBase64, getLocationData())
       }
     } else if (!isProcessing) {
+      // Check recognition limit before starting
+      if (!canRecognize) {
+        setShowPaywall(true)
+        return
+      }
       // Start recording
       resetRecognition()
       await startRecording()
@@ -153,6 +174,7 @@ export default function DiscoverScreen() {
     isListening,
     isProcessing,
     recordingError,
+    canRecognize,
     startRecording,
     stopRecording,
     recognize,
@@ -164,6 +186,12 @@ export default function DiscoverScreen() {
     resetRecognition()
     cancelRecording()
   }, [resetRecognition, cancelRecording])
+
+  const router = useRouter()
+  const handleUpgrade = useCallback(() => {
+    setShowPaywall(false)
+    router.push("/(tabs)/profile/subscription" as any)
+  }, [router])
 
   const getStatusText = () => {
     if (isProcessing) return "Identifying..."
@@ -180,6 +208,13 @@ export default function DiscoverScreen() {
       <View style={styles.content}>
         <Text style={styles.title}>Discover Music</Text>
         <Text style={styles.subtitle}>{getSubtitle()}</Text>
+
+        <UsageBadge
+          count={usageCount}
+          limit={usageLimit}
+          isPremium={isPremium}
+          onPress={() => setShowPaywall(true)}
+        />
 
         <RecognitionButton
           onPress={handlePress}
@@ -225,6 +260,14 @@ export default function DiscoverScreen() {
       {recognitionStatus === "error" && (
         <NotFoundResult onDismiss={handleDismiss} />
       )}
+
+      <PaywallModal
+        visible={showPaywall}
+        usageCount={usageCount}
+        usageLimit={usageLimit}
+        onUpgrade={handleUpgrade}
+        onDismiss={() => setShowPaywall(false)}
+      />
     </View>
   )
 }

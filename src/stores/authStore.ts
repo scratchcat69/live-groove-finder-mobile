@@ -1,13 +1,14 @@
 import { create } from "zustand"
 import { User, Session, AuthError } from "@supabase/supabase-js"
-import { supabase, getUserProfile, getUserRoles } from "../services/supabase"
-import { Profile, AppRole } from "../types/database"
+import { supabase, getUserProfile, getUserRoles, getUserSubscription } from "../services/supabase"
+import { Profile, AppRole, Subscription, SubscriptionTier } from "../types/database"
 
 interface AuthState {
   user: User | null
   session: Session | null
   profile: Profile | null
   roles: AppRole[]
+  subscription: Subscription | null
   isLoading: boolean
   isInitialized: boolean
   error: string | null
@@ -23,6 +24,7 @@ interface AuthActions {
   ) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  refreshSubscription: () => Promise<void>
   updateProfile: (updates: { username?: string; avatar_url?: string }) => Promise<boolean>
   clearError: () => void
 }
@@ -39,6 +41,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
   session: null,
   profile: null,
   roles: [],
+  subscription: null,
   isLoading: true,
   isInitialized: false,
   error: null,
@@ -65,10 +68,11 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       }
 
       if (session?.user) {
-        // Fetch profile and roles in parallel
-        const [profile, roles] = await Promise.all([
+        // Fetch profile, roles, and subscription in parallel
+        const [profile, roles, subscription] = await Promise.all([
           getUserProfile(session.user.id),
           getUserRoles(session.user.id),
+          getUserSubscription(session.user.id),
         ])
 
         set({
@@ -76,6 +80,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
           session,
           profile,
           roles: roles as AppRole[],
+          subscription,
           isLoading: false,
           isInitialized: true,
         })
@@ -85,6 +90,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
           session: null,
           profile: null,
           roles: [],
+          subscription: null,
           isLoading: false,
           isInitialized: true,
         })
@@ -99,6 +105,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
             session: null,
             profile: null,
             roles: [],
+            subscription: null,
           })
         } else if (event === "TOKEN_REFRESHED" && newSession) {
           set({ session: newSession, user: newSession.user })
@@ -126,9 +133,10 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     }
 
     if (data.user) {
-      const [profile, roles] = await Promise.all([
+      const [profile, roles, subscription] = await Promise.all([
         getUserProfile(data.user.id),
         getUserRoles(data.user.id),
+        getUserSubscription(data.user.id),
       ])
 
       set({
@@ -136,6 +144,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         session: data.session,
         profile,
         roles: roles as AppRole[],
+        subscription,
         isLoading: false,
       })
     }
@@ -163,9 +172,10 @@ export const useAuthStore = create<AuthStore>((set, get) => {
 
     // Note: User may need to verify email before being fully signed in
     if (data.user && data.session) {
-      const [profile, roles] = await Promise.all([
+      const [profile, roles, subscription] = await Promise.all([
         getUserProfile(data.user.id),
         getUserRoles(data.user.id),
+        getUserSubscription(data.user.id),
       ])
 
       set({
@@ -173,6 +183,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         session: data.session,
         profile,
         roles: roles as AppRole[],
+        subscription,
         isLoading: false,
       })
     } else {
@@ -197,6 +208,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       session: null,
       profile: null,
       roles: [],
+      subscription: null,
       isLoading: false,
     })
   },
@@ -211,6 +223,13 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     ])
 
     set({ profile, roles: roles as AppRole[] })
+  },
+
+  refreshSubscription: async () => {
+    const { user } = get()
+    if (!user) return
+    const subscription = await getUserSubscription(user.id)
+    set({ subscription })
   },
 
   updateProfile: async (updates: { username?: string; avatar_url?: string }) => {
@@ -247,3 +266,5 @@ export const useRoles = () => useAuthStore((state) => state.roles)
 export const useIsAuthenticated = () =>
   useAuthStore((state) => state.session !== null)
 export const useAuthLoading = () => useAuthStore((state) => state.isLoading)
+export const useSubscriptionTier = () =>
+  useAuthStore((state) => state.subscription?.tier ?? "free")

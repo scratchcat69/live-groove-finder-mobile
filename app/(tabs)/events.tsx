@@ -22,6 +22,7 @@ import { useCheckins } from "@/src/hooks/useCheckins"
 import { useDistanceUnit } from "@/src/hooks/useDistanceUnit"
 import { convertDistance } from "@/src/utils/distanceUtils"
 import { CheckInModal } from "@/src/components/events/CheckInModal"
+import { enrichEventUrl } from "@/src/utils/affiliateLinks"
 
 // Normalize attractions from either string[] (old deployed edge function)
 // or EventAttraction[] (new enriched format) into a consistent shape
@@ -236,7 +237,7 @@ export default function EventsScreen() {
 
   const handleEventPress = (event: Event) => {
     if (event.url) {
-      Linking.openURL(event.url)
+      Linking.openURL(enrichEventUrl(event.url))
     }
   }
 

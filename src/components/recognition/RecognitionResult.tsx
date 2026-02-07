@@ -2,6 +2,7 @@ import React from "react"
 import { StyleSheet, TouchableOpacity, Linking, Share, View as RNView } from "react-native"
 import { Text, View } from "@/components/Themed"
 import { RecognizedSong } from "@/src/hooks/useMusicRecognition"
+import { enrichSpotifyUrl } from "@/src/utils/affiliateLinks"
 
 interface RecognitionResultProps {
   song: RecognizedSong
@@ -12,14 +13,15 @@ interface RecognitionResultProps {
 export function RecognitionResult({ song, onDismiss, onSave }: RecognitionResultProps) {
   const openSpotify = () => {
     if (song.spotifyUrl) {
-      Linking.openURL(song.spotifyUrl)
+      Linking.openURL(enrichSpotifyUrl(song.spotifyUrl))
     }
   }
 
   const handleShare = async () => {
     try {
+      const listenUrl = song.spotifyUrl ? enrichSpotifyUrl(song.spotifyUrl) : ""
       await Share.share({
-        message: `I discovered "${song.title}" by ${song.artist} on Live Groove Finder!${song.spotifyUrl ? `\nListen: ${song.spotifyUrl}` : ""}`,
+        message: `I discovered "${song.title}" by ${song.artist} on Live Groove Finder!${listenUrl ? `\nListen: ${listenUrl}` : ""}`,
       })
     } catch {
       // User cancelled share

@@ -81,4 +81,14 @@ export const queryKeys = {
     byType: (userId: string, type: string) =>
       ["favorites", userId, type] as const,
   },
+
+  // Subscription
+  subscription: {
+    byUser: (userId: string) => ["subscription", "byUser", userId] as const,
+  },
+
+  // Recognition usage
+  recognitionUsage: {
+    byUser: (userId: string) => ["recognitionUsage", "byUser", userId] as const,
+  },
 }

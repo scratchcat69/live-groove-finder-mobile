@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import * as SecureStore from "expo-secure-store"
 import { Platform } from "react-native"
-import { Database } from "../types/database"
+import { Database, Subscription } from "../types/database"
 
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? ""
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? ""
@@ -89,4 +89,22 @@ export async function getUserRoles(userId: string): Promise<string[]> {
     return []
   }
   return (data as Array<{ role: string }> | null)?.map((r) => r.role) ?? []
+}
+
+// Helper function to get user subscription
+export async function getUserSubscription(userId: string): Promise<Subscription | null> {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("user_id", userId)
+    .single()
+
+  if (error) {
+    // No subscription row is normal for new users
+    if (error.code !== "PGRST116") {
+      console.error("Error getting user subscription:", error.message)
+    }
+    return null
+  }
+  return data
 }

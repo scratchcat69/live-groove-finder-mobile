@@ -11,6 +11,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="index" options={{ title: "My Profile" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
       <Stack.Screen name="edit" options={{ title: "Edit Profile" }} />
+      <Stack.Screen name="subscription" options={{ title: "Subscription" }} />
     </Stack>
   )
 }

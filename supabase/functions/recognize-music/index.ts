@@ -149,21 +149,25 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Rate limit: max 20 recognition attempts per user per hour
+    // Tier-based monthly recognition limit
     if (userId) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
       if (supabaseUrl && supabaseKey) {
         const supabase = createClient(supabaseUrl, supabaseKey)
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-        const { count } = await supabase
-          .from("discoveries")
-          .select("id", { count: "exact", head: true })
-          .eq("discovered_by_user_id", userId)
-          .gte("discovered_at", oneHourAgo)
-        if (count !== null && count >= 20) {
+
+        // Get subscription tier
+        const { data: tier } = await supabase.rpc("get_user_subscription_tier", { _user_id: userId })
+        const userTier = tier || "free"
+
+        // Get monthly usage
+        const { data: count } = await supabase.rpc("get_recognition_count_this_month", { p_user_id: userId })
+        const usage = count || 0
+
+        const limits: Record<string, number> = { free: 5, discovery: 50, premium: 999999 }
+        if (usage >= (limits[userTier] ?? 5)) {
           return new Response(
-            JSON.stringify({ success: false, error: "Rate limit exceeded. Try again later." }),
+            JSON.stringify({ success: false, error: "Recognition limit reached.", limitReached: true }),
             { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           )
         }

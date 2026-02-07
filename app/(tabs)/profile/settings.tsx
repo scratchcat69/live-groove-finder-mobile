@@ -124,6 +124,13 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.settingRow}
+            onPress={() => router.push("/(tabs)/profile/subscription" as any)}
+          >
+            <Text style={styles.settingLabel}>Subscription</Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingRow}
             onPress={() => router.push("/(tabs)/profile/edit" as any)}
           >
             <Text style={styles.settingLabel}>Edit Profile</Text>

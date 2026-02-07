@@ -19,6 +19,7 @@ export interface RecognitionResult {
   type: "commercial" | "humming" | "not_found"
   song?: RecognizedSong
   error?: string
+  limitReached?: boolean
 }
 
 export type RecognitionStatus = "idle" | "recognizing" | "success" | "not_found" | "error"
@@ -66,6 +67,25 @@ export function useMusicRecognition(): UseMusicRecognitionReturn {
         })
 
         if (!response.ok) {
+          // Parse limit-reached responses from the server
+          if (response.status === 429) {
+            try {
+              const errorData = await response.json()
+              if (errorData.limitReached) {
+                const limitResult: RecognitionResult = {
+                  success: false,
+                  type: "not_found",
+                  error: errorData.error || "Recognition limit reached.",
+                  limitReached: true,
+                }
+                setResult(limitResult)
+                setStatus("error")
+                return limitResult
+              }
+            } catch {
+              // Fall through to generic error
+            }
+          }
           const errorText = await response.text()
           throw new Error(`Edge Function error: ${response.status} - ${errorText}`)
         }

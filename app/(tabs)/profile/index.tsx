@@ -19,6 +19,8 @@ import { useFollowingCount } from "@/src/hooks/useFollowingCount"
 import { useFavorites } from "@/src/hooks/useFavorites"
 import { useFavoriteArtists, FavoriteArtistInfo } from "@/src/hooks/useFavoriteArtists"
 import { useCheckins, CheckinRow } from "@/src/hooks/useCheckins"
+import { useSubscription } from "@/src/hooks/useSubscription"
+import { useRecognitionUsage } from "@/src/hooks/useRecognitionUsage"
 
 function DiscoveryRow({
   discovery,
@@ -125,6 +127,8 @@ export default function ProfileScreen() {
   const backgroundColor = useThemeColor({}, "background")
   const router = useRouter()
 
+  const { tier, isPremium } = useSubscription()
+  const { count: usageCount, limit: usageLimit } = useRecognitionUsage()
   const { count: followingCount } = useFollowingCount()
   const { favoriteIds, count: favoritesCount } = useFavorites("artist")
   const { data: favoriteArtists = [] } = useFavoriteArtists(favoriteIds())
@@ -217,6 +221,29 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>Check-ins</Text>
           </View>
         </View>
+
+        {/* Subscription */}
+        <TouchableOpacity
+          style={styles.subscriptionBanner}
+          onPress={() => router.push("/(tabs)/profile/subscription" as any)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.subscriptionInfo}>
+            <View style={[styles.subscriptionBadge, isPremium && styles.subscriptionBadgePremium]}>
+              <Text style={[styles.subscriptionBadgeText, isPremium && styles.subscriptionBadgeTextPremium]}>
+                {isPremium ? "Premium" : "Free Plan"}
+              </Text>
+            </View>
+            <Text style={styles.subscriptionUsage}>
+              {isPremium
+                ? `${usageCount} recognitions this month`
+                : `${usageCount}/${usageLimit} recognitions this month`}
+            </Text>
+          </View>
+          {!isPremium && (
+            <Text style={styles.upgradeText}>Upgrade</Text>
+          )}
+        </TouchableOpacity>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>My Discoveries</Text>
@@ -355,6 +382,47 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#aaa",
     marginTop: 4,
+  },
+  subscriptionBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#333",
+  },
+  subscriptionInfo: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
+  subscriptionBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: "#333",
+    marginBottom: 4,
+  },
+  subscriptionBadgePremium: {
+    backgroundColor: "rgba(99,102,241,0.2)",
+  },
+  subscriptionBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#aaa",
+  },
+  subscriptionBadgeTextPremium: {
+    color: "#6366f1",
+  },
+  subscriptionUsage: {
+    fontSize: 13,
+    color: "#888",
+  },
+  upgradeText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6366f1",
   },
   section: {
     padding: 20,
