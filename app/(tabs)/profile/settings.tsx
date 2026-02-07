@@ -124,7 +124,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.settingRow}
-            onPress={() => router.push("./edit" as any)}
+            onPress={() => router.push("/(tabs)/profile/edit" as any)}
           >
             <Text style={styles.settingLabel}>Edit Profile</Text>
             <Text style={styles.chevron}>›</Text>

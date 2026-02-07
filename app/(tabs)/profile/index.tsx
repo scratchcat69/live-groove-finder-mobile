@@ -3,7 +3,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  View as RNView,
+  View,
   Image,
 } from "react-native"
 import { useCallback, useRef } from "react"
@@ -11,7 +11,7 @@ import { useFocusEffect } from "@react-navigation/native"
 import { useRouter, Stack } from "expo-router"
 import FontAwesome from "@expo/vector-icons/FontAwesome"
 
-import { Text, View } from "@/components/Themed"
+import { Text } from "@/components/Themed"
 import { useThemeColor } from "@/components/Themed"
 import { useProfile, useRoles } from "@/src/stores/authStore"
 import { useDiscoveries, Discovery } from "@/src/hooks/useDiscoveries"
@@ -76,12 +76,12 @@ function FavoriteArtistRow({
 }) {
   return (
     <TouchableOpacity style={styles.favoriteRow} onPress={onPress} activeOpacity={0.7}>
-      <RNView style={styles.favoriteAvatar}>
+      <View style={styles.favoriteAvatar}>
         <Text style={styles.favoriteAvatarText}>
           {artist.name[0]?.toUpperCase() ?? "?"}
         </Text>
-      </RNView>
-      <RNView style={styles.favoriteContent}>
+      </View>
+      <View style={styles.favoriteContent}>
         <Text style={styles.favoriteName} numberOfLines={1}>
           {artist.name}
         </Text>
@@ -90,7 +90,7 @@ function FavoriteArtistRow({
             {artist.genre.join(" · ")}
           </Text>
         )}
-      </RNView>
+      </View>
     </TouchableOpacity>
   )
 }
@@ -103,18 +103,18 @@ function CheckinRowItem({ checkin }: { checkin: CheckinRow }) {
   const dateText = checkin.checked_in_at ? new Date(checkin.checked_in_at).toLocaleDateString() : ""
 
   return (
-    <RNView style={styles.discoveryRow}>
-      <RNView style={[styles.discoveryIcon, { backgroundColor: "#22c55e" }]}>
+    <View style={styles.discoveryRow}>
+      <View style={[styles.discoveryIcon, { backgroundColor: "#22c55e" }]}>
         <Text style={styles.discoveryIconText}>{"\u2713"}</Text>
-      </RNView>
-      <RNView style={styles.discoveryContent}>
+      </View>
+      <View style={styles.discoveryContent}>
         <Text style={styles.discoveryTitle} numberOfLines={1}>{eventName}</Text>
         {venueText ? <Text style={styles.discoveryArtist} numberOfLines={1}>{"\uD83D\uDCCD"} {venueText}</Text> : null}
         {stars ? <Text style={{ fontSize: 13, color: "#f59e0b" }}>{stars}</Text> : null}
         {checkin.review ? <Text style={{ fontSize: 12, color: "#aaa", fontStyle: "italic" }} numberOfLines={1}>"{checkin.review}"</Text> : null}
-      </RNView>
+      </View>
       <Text style={styles.discoveryDate}>{dateText}</Text>
-    </RNView>
+    </View>
   )
 }
 
@@ -150,12 +150,12 @@ export default function ProfileScreen() {
   }
 
   return (
-    <RNView style={[styles.container, { backgroundColor }]}>
+    <View style={[styles.container, { backgroundColor }]}>
       <Stack.Screen
         options={{
           headerRight: () => (
             <TouchableOpacity
-              onPress={() => router.push("./settings" as any)}
+              onPress={() => router.push("/(tabs)/profile/settings" as any)}
               style={{ marginRight: 4 }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
@@ -193,7 +193,7 @@ export default function ProfileScreen() {
           )}
           <TouchableOpacity
             style={styles.editProfileButton}
-            onPress={() => router.push("./edit" as any)}
+            onPress={() => router.push("/(tabs)/profile/edit" as any)}
           >
             <Text style={styles.editProfileButtonText}>Edit Profile</Text>
           </TouchableOpacity>
@@ -238,7 +238,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Concert History Section */}
-        <RNView style={styles.section}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Concert History ({checkinCount})</Text>
           {checkins.length > 0 ? (
             checkins.map((checkin) => (
@@ -247,7 +247,7 @@ export default function ProfileScreen() {
           ) : (
             <Text style={styles.emptyText}>Your concert check-ins will appear here</Text>
           )}
-        </RNView>
+        </View>
 
         {favoriteArtists.length > 0 && (
           <View style={styles.section}>
@@ -262,7 +262,7 @@ export default function ProfileScreen() {
           </View>
         )}
       </ScrollView>
-    </RNView>
+    </View>
   )
 }
 
@@ -305,6 +305,7 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 24,
     fontWeight: "600",
+    color: "#fff",
   },
   rolesContainer: {
     flexDirection: "row",
@@ -348,10 +349,11 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: "bold",
+    color: "#fff",
   },
   statLabel: {
     fontSize: 12,
-    opacity: 0.6,
+    color: "#aaa",
     marginTop: 4,
   },
   section: {
@@ -360,10 +362,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
+    color: "#fff",
     marginBottom: 12,
   },
   emptyText: {
-    opacity: 0.5,
+    color: "#888",
     textAlign: "center",
     paddingVertical: 20,
   },
@@ -392,15 +395,16 @@ const styles = StyleSheet.create({
   discoveryTitle: {
     fontSize: 15,
     fontWeight: "600",
+    color: "#fff",
   },
   discoveryArtist: {
     fontSize: 13,
-    opacity: 0.7,
+    color: "#aaa",
     marginTop: 2,
   },
   discoveryDate: {
     fontSize: 12,
-    opacity: 0.5,
+    color: "#888",
     marginRight: 8,
   },
   deleteButton: {
