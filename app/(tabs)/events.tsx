@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { useFocusEffect } from "@react-navigation/native"
 
 import { Text, View, useThemeColor } from "@/components/Themed"
@@ -19,6 +19,8 @@ import { useEvents, Event, EventAttraction } from "@/src/hooks/useEvents"
 import { SearchBar } from "@/src/components/artists/SearchBar"
 import { useDebounce } from "@/src/hooks/useDebounce"
 import { useCheckins } from "@/src/hooks/useCheckins"
+import { useDistanceUnit } from "@/src/hooks/useDistanceUnit"
+import { convertDistance } from "@/src/utils/distanceUtils"
 import { CheckInModal } from "@/src/components/events/CheckInModal"
 
 // Normalize attractions from either string[] (old deployed edge function)
@@ -170,7 +172,7 @@ export default function EventsScreen() {
     requestPermission,
     refreshLocation,
   } = useLocation()
-  const { events, loading: eventsLoading, error: eventsError, fetchEvents, loadMore, hasMore } = useEvents()
+  const { unit } = useDistanceUnit()
 
   const { isCheckedIn, createCheckin } = useCheckins()
   const [checkInEvent, setCheckInEvent] = useState<Event | null>(null)
@@ -180,49 +182,35 @@ export default function EventsScreen() {
   const [searchKeyword, setSearchKeyword] = useState("")
   const debouncedKeyword = useDebounce(searchKeyword, 400)
 
-  // Fetch events when location is available
-  const loadEvents = useCallback(() => {
-    if (location) {
-      fetchEvents({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        radius,
-        keyword: debouncedKeyword || undefined,
-      })
-    }
-  }, [location, radius, debouncedKeyword, fetchEvents])
+  // Convert radius to miles for the API when user is in km mode
+  const radiusMiles = unit === "km" ? Math.round(convertDistance(radius, "km", "mi")) : radius
 
-  // Load events when location becomes available
-  const hasLoadedForLocation = useRef(false)
-  useEffect(() => {
-    if (location && !hasLoadedForLocation.current) {
-      hasLoadedForLocation.current = true
-      loadEvents()
-    }
-  }, [location?.latitude, location?.longitude, loadEvents])
-
-  // Refetch when debounced keyword or radius changes (after initial load)
-  const hasInitiallyLoaded = useRef(false)
-  useEffect(() => {
-    if (!hasInitiallyLoaded.current) {
-      hasInitiallyLoaded.current = true
-      return
-    }
-    if (location) {
-      loadEvents()
-    }
-  }, [debouncedKeyword, radius])
+  const {
+    events,
+    loading: eventsLoading,
+    error: eventsError,
+    refresh,
+    loadMore,
+    hasMore,
+    isFetchingNextPage,
+  } = useEvents({
+    latitude: location?.latitude ?? null,
+    longitude: location?.longitude ?? null,
+    radius: radiusMiles,
+    keyword: debouncedKeyword || undefined,
+    enabled: !!location,
+  })
 
   // Refresh when tab comes back into focus (skip initial mount)
   const hasMounted = useRef(false)
   useFocusEffect(
     useCallback(() => {
       if (hasMounted.current && location) {
-        loadEvents()
+        refresh()
       } else {
         hasMounted.current = true
       }
-    }, [location, loadEvents])
+    }, [location, refresh])
   )
 
   // Derive unique performers from loaded events
@@ -373,7 +361,7 @@ export default function EventsScreen() {
                     radius === option && styles.radiusChipTextActive,
                   ]}
                 >
-                  {option} mi
+                  {option} {unit}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -399,18 +387,14 @@ export default function EventsScreen() {
         refreshControl={
           <RefreshControl
             refreshing={eventsLoading && events.length === 0}
-            onRefresh={loadEvents}
+            onRefresh={refresh}
             tintColor="#1DB954"
           />
         }
-        onEndReached={() => {
-          if (hasMore && !eventsLoading) {
-            loadMore()
-          }
-        }}
+        onEndReached={() => loadMore()}
         onEndReachedThreshold={0.3}
         ListFooterComponent={
-          eventsLoading && events.length > 0 ? (
+          isFetchingNextPage ? (
             <RNView style={styles.loadingMore}>
               <ActivityIndicator size="small" color="#1DB954" />
             </RNView>
@@ -424,7 +408,7 @@ export default function EventsScreen() {
               <Text style={styles.emptyText}>
                 {eventsError
                   ? eventsError
-                  : `No music events found within ${radius} miles. Try increasing the radius.`}
+                  : `No music events found within ${radius} ${unit}. Try increasing the radius.`}
               </Text>
             </RNView>
           )

@@ -44,8 +44,8 @@ export const queryKeys = {
     nearby: (lat: number, lng: number, radius?: number) =>
       ["events", "nearby", lat, lng, radius] as const,
     detail: (id: string) => ["events", "detail", id] as const,
-    ticketmaster: (lat: number, lng: number, radius?: number) =>
-      ["events", "ticketmaster", lat, lng, radius] as const,
+    ticketmaster: (lat: number, lng: number, radius?: number, keyword?: string) =>
+      ["events", "ticketmaster", lat, lng, radius, keyword] as const,
   },
 
   // Artists
@@ -68,6 +68,11 @@ export const queryKeys = {
   // Check-ins
   checkins: {
     byUser: (userId: string) => ["checkins", "byUser", userId] as const,
+  },
+
+  // Notification preferences
+  notificationPreferences: {
+    byUser: (userId: string) => ["notificationPreferences", "byUser", userId] as const,
   },
 
   // Favorites

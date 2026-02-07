@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react"
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "../services/supabase"
+import { queryKeys } from "../services/queryClient"
 
 export interface EventVenue {
   id: string
@@ -47,132 +48,115 @@ export interface EventsPage {
   number: number
 }
 
-interface UseEventsReturn {
+interface EventsResponse {
+  success: boolean
   events: Event[]
-  loading: boolean
-  error: string | null
-  page: EventsPage | null
-  fetchEvents: (params: FetchEventsParams) => Promise<void>
-  loadMore: () => Promise<void>
-  hasMore: boolean
+  page: EventsPage
+  error?: string
 }
 
-interface FetchEventsParams {
-  latitude: number
-  longitude: number
+interface UseEventsParams {
+  latitude: number | null
+  longitude: number | null
   radius?: number
   keyword?: string
-  reset?: boolean
+  enabled?: boolean
 }
 
-export function useEvents(): UseEventsReturn {
-  const [events, setEvents] = useState<Event[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState<EventsPage | null>(null)
-  const [lastParams, setLastParams] = useState<FetchEventsParams | null>(null)
+async function fetchEventsPage(
+  params: { latitude: number; longitude: number; radius: number; keyword?: string },
+  pageParam: number
+): Promise<EventsResponse> {
+  const functionUrl = `${SUPABASE_URL}/functions/v1/ticketmaster-events`
 
-  const fetchEvents = useCallback(async (params: FetchEventsParams) => {
-    const { latitude, longitude, radius = 25, keyword, reset = true } = params
+  const response = await fetch(functionUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      apikey: SUPABASE_ANON_KEY,
+    },
+    body: JSON.stringify({
+      latitude: params.latitude,
+      longitude: params.longitude,
+      radius: params.radius,
+      keyword: params.keyword,
+      classificationName: "music",
+      size: 20,
+      page: pageParam,
+    }),
+  })
 
-    try {
-      setLoading(true)
-      setError(null)
+  const data = await response.json()
 
-      if (reset) {
-        setEvents([])
+  if (!data.success) {
+    throw new Error(data.error || "Failed to fetch events")
+  }
+
+  return {
+    success: true,
+    events: data.events ?? [],
+    page: data.page ?? { size: 20, totalElements: 0, totalPages: 0, number: 0 },
+  }
+}
+
+export function useEvents({ latitude, longitude, radius = 25, keyword, enabled = true }: UseEventsParams) {
+  const queryClient = useQueryClient()
+
+  const hasLocation = latitude != null && longitude != null
+  const queryEnabled = enabled && hasLocation
+
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    error,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: queryKeys.events.ticketmaster(
+      latitude ?? 0,
+      longitude ?? 0,
+      radius,
+      keyword
+    ),
+    queryFn: ({ pageParam }) =>
+      fetchEventsPage(
+        { latitude: latitude!, longitude: longitude!, radius, keyword },
+        pageParam
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.page.number < lastPage.page.totalPages - 1) {
+        return lastPage.page.number + 1
       }
+      return undefined
+    },
+    enabled: queryEnabled,
+  })
 
-      setLastParams(params)
+  const events = data?.pages.flatMap((p) => p.events) ?? []
 
-      const functionUrl = `${SUPABASE_URL}/functions/v1/ticketmaster-events`
-
-      const response = await fetch(functionUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-          "apikey": SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({
-          latitude,
-          longitude,
-          radius,
-          keyword,
-          classificationName: "music",
-          size: 20,
-          page: 0,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.error || "Failed to fetch events")
-      }
-
-      setEvents(data.events || [])
-      setPage(data.page || null)
-    } catch (err) {
-      console.error("Error fetching events:", err)
-      setError(err instanceof Error ? err.message : "Failed to fetch events")
-    } finally {
-      setLoading(false)
+  const refresh = () => {
+    if (queryEnabled) {
+      refetch()
     }
-  }, [])
+  }
 
-  const loadMore = useCallback(async () => {
-    if (!lastParams || !page || loading) return
-    if (page.number >= page.totalPages - 1) return
-
-    try {
-      setLoading(true)
-
-      const functionUrl = `${SUPABASE_URL}/functions/v1/ticketmaster-events`
-
-      const response = await fetch(functionUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-          "apikey": SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({
-          latitude: lastParams.latitude,
-          longitude: lastParams.longitude,
-          radius: lastParams.radius || 25,
-          keyword: lastParams.keyword,
-          classificationName: "music",
-          size: 20,
-          page: page.number + 1,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.error || "Failed to fetch events")
-      }
-
-      setEvents(prev => [...prev, ...(data.events || [])])
-      setPage(data.page || null)
-    } catch (err) {
-      console.error("Error loading more events:", err)
-      setError(err instanceof Error ? err.message : "Failed to load more events")
-    } finally {
-      setLoading(false)
+  const loadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
     }
-  }, [lastParams, page, loading])
-
-  const hasMore = page ? page.number < page.totalPages - 1 : false
+  }
 
   return {
     events,
-    loading,
-    error,
-    page,
-    fetchEvents,
+    loading: isLoading,
+    error: error instanceof Error ? error.message : null,
+    refresh,
     loadMore,
-    hasMore,
+    hasMore: !!hasNextPage,
+    isFetchingNextPage,
   }
 }

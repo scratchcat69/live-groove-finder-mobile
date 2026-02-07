@@ -23,6 +23,7 @@ interface AuthActions {
   ) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  updateProfile: (updates: { username?: string; avatar_url?: string }) => Promise<boolean>
   clearError: () => void
 }
 
@@ -210,6 +211,29 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     ])
 
     set({ profile, roles: roles as AppRole[] })
+  },
+
+  updateProfile: async (updates: { username?: string; avatar_url?: string }) => {
+    const { user } = get()
+    if (!user) return false
+
+    try {
+      const { error } = await (supabase as any)
+        .from("profiles")
+        .update(updates)
+        .eq("id", user.id)
+
+      if (error) {
+        console.error("Error updating profile:", error.message)
+        return false
+      }
+
+      await get().refreshProfile()
+      return true
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      return false
+    }
   },
 
   clearError: () => set({ error: null }),

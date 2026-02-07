@@ -4,14 +4,16 @@ import {
   ScrollView,
   Alert,
   View as RNView,
+  Image,
 } from "react-native"
 import { useCallback, useRef } from "react"
 import { useFocusEffect } from "@react-navigation/native"
-import { useRouter } from "expo-router"
+import { useRouter, Stack } from "expo-router"
+import FontAwesome from "@expo/vector-icons/FontAwesome"
 
 import { Text, View } from "@/components/Themed"
 import { useThemeColor } from "@/components/Themed"
-import { useAuthStore, useProfile, useRoles } from "@/src/stores/authStore"
+import { useProfile, useRoles } from "@/src/stores/authStore"
 import { useDiscoveries, Discovery } from "@/src/hooks/useDiscoveries"
 import { useFollowingCount } from "@/src/hooks/useFollowingCount"
 import { useFavorites } from "@/src/hooks/useFavorites"
@@ -119,7 +121,6 @@ function CheckinRowItem({ checkin }: { checkin: CheckinRow }) {
 export default function ProfileScreen() {
   const profile = useProfile()
   const roles = useRoles()
-  const { signOut, isLoading } = useAuthStore()
   const { discoveries, totalCount, loading: discoveriesLoading, deleteDiscovery, refresh } = useDiscoveries(50)
   const backgroundColor = useThemeColor({}, "background")
   const router = useRouter()
@@ -148,30 +149,36 @@ export default function ProfileScreen() {
     }
   }
 
-  const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: () => signOut(),
-      },
-    ])
-  }
-
   return (
     <RNView style={[styles.container, { backgroundColor }]}>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => router.push("./settings" as any)}
+              style={{ marginRight: 4 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <FontAwesome name="cog" size={22} color="#aaa" />
+            </TouchableOpacity>
+          ),
+        }}
+      />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={true}
       >
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {profile?.username?.[0]?.toUpperCase() ?? "?"}
-            </Text>
-          </View>
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {profile?.username?.[0]?.toUpperCase() ?? "?"}
+              </Text>
+            </View>
+          )}
           <Text style={styles.username}>
             {profile?.username ?? "Anonymous User"}
           </Text>
@@ -184,6 +191,12 @@ export default function ProfileScreen() {
               ))}
             </View>
           )}
+          <TouchableOpacity
+            style={styles.editProfileButton}
+            onPress={() => router.push("./edit" as any)}
+          >
+            <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.statsContainer}>
@@ -248,14 +261,6 @@ export default function ProfileScreen() {
             ))}
           </View>
         )}
-
-        <TouchableOpacity
-          style={styles.signOutButton}
-          onPress={handleSignOut}
-          disabled={isLoading}
-        >
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
       </ScrollView>
     </RNView>
   )
@@ -286,6 +291,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 12,
+  },
   avatarText: {
     fontSize: 32,
     fontWeight: "bold",
@@ -310,6 +321,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#fff",
     textTransform: "capitalize",
+  },
+  editProfileButton: {
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#6366f1",
+  },
+  editProfileButtonText: {
+    color: "#6366f1",
+    fontSize: 14,
+    fontWeight: "600",
   },
   statsContainer: {
     flexDirection: "row",
@@ -342,19 +366,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     textAlign: "center",
     paddingVertical: 20,
-  },
-  signOutButton: {
-    margin: 20,
-    padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#ef4444",
-    alignItems: "center",
-  },
-  signOutText: {
-    color: "#ef4444",
-    fontSize: 16,
-    fontWeight: "600",
   },
   discoveryRow: {
     flexDirection: "row",

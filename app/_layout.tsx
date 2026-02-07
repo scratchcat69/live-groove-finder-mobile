@@ -14,6 +14,8 @@ import "react-native-reanimated"
 import { useColorScheme } from "@/components/useColorScheme"
 import { queryClient } from "@/src/services/queryClient"
 import { useAuthStore } from "@/src/stores/authStore"
+import { AppErrorBoundary } from "@/src/components/common/ErrorBoundary"
+import { usePushNotifications } from "@/src/hooks/usePushNotifications"
 
 export { ErrorBoundary } from "expo-router"
 
@@ -72,7 +74,9 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RootLayoutNav />
+      <AppErrorBoundary>
+        <RootLayoutNav />
+      </AppErrorBoundary>
     </QueryClientProvider>
   )
 }
@@ -80,6 +84,7 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const colorScheme = useColorScheme()
   useProtectedRoute()
+  usePushNotifications()
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
