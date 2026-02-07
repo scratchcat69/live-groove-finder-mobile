@@ -3,7 +3,47 @@ import Stripe from "https://esm.sh/stripe@14?target=deno"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+}
+
+// Verify Stripe webhook signature using Web Crypto API (Deno-compatible)
+async function verifyStripeSignature(
+  payload: string,
+  sigHeader: string,
+  secret: string
+): Promise<boolean> {
+  const parts = sigHeader.split(",").reduce((acc, part) => {
+    const [key, val] = part.split("=")
+    acc[key.trim()] = val
+    return acc
+  }, {} as Record<string, string>)
+
+  const timestamp = parts["t"]
+  const signature = parts["v1"]
+
+  if (!timestamp || !signature) return false
+
+  // Check timestamp is within 5 minutes
+  const age = Math.floor(Date.now() / 1000) - parseInt(timestamp)
+  if (age > 300) return false
+
+  const signedPayload = `${timestamp}.${payload}`
+  const encoder = new TextEncoder()
+
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  )
+
+  const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(signedPayload))
+  const expected = Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("")
+
+  return expected === signature
 }
 
 Deno.serve(async (req) => {
@@ -30,26 +70,30 @@ Deno.serve(async (req) => {
     return new Response("Missing signature", { status: 400 })
   }
 
-  let event: Stripe.Event
-  try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
-  } catch (err) {
-    console.error("Webhook signature verification failed:", err)
-    return new Response(`Webhook Error: ${String(err)}`, { status: 400 })
+  // Verify signature using Web Crypto API
+  const valid = await verifyStripeSignature(body, sig, webhookSecret)
+  if (!valid) {
+    console.error("Webhook signature verification failed")
+    return new Response("Invalid signature", { status: 400 })
   }
 
+  const event = JSON.parse(body) as { type: string; data: { object: Record<string, unknown> } }
+
   try {
+    console.log("Processing webhook event:", event.type)
+
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session
+        const session = event.data.object
         const customerId = session.customer as string
         const subscriptionId = session.subscription as string
 
+        console.log("Checkout completed. Customer:", customerId, "Sub:", subscriptionId)
+
         if (subscriptionId) {
-          // Fetch subscription details from Stripe
           const stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
 
-          await supabase
+          const { error } = await supabase
             .from("subscriptions")
             .update({
               tier: "premium",
@@ -61,12 +105,15 @@ Deno.serve(async (req) => {
               updated_at: new Date().toISOString(),
             })
             .eq("stripe_customer_id", customerId)
+
+          if (error) console.error("DB update error:", error.message)
+          else console.log("Updated subscription to premium for customer:", customerId)
         }
         break
       }
 
       case "customer.subscription.updated": {
-        const subscription = event.data.object as Stripe.Subscription
+        const subscription = event.data.object
         const customerId = subscription.customer as string
 
         const statusMap: Record<string, string> = {
@@ -76,24 +123,26 @@ Deno.serve(async (req) => {
           trialing: "trial",
         }
 
-        await supabase
+        const { error } = await supabase
           .from("subscriptions")
           .update({
-            status: statusMap[subscription.status] || subscription.status,
-            cancel_at_period_end: subscription.cancel_at_period_end,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            status: statusMap[subscription.status as string] || (subscription.status as string),
+            cancel_at_period_end: subscription.cancel_at_period_end as boolean,
+            current_period_start: new Date((subscription.current_period_start as number) * 1000).toISOString(),
+            current_period_end: new Date((subscription.current_period_end as number) * 1000).toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq("stripe_customer_id", customerId)
+
+        if (error) console.error("DB update error:", error.message)
         break
       }
 
       case "customer.subscription.deleted": {
-        const subscription = event.data.object as Stripe.Subscription
+        const subscription = event.data.object
         const customerId = subscription.customer as string
 
-        await supabase
+        const { error } = await supabase
           .from("subscriptions")
           .update({
             tier: "free",
@@ -102,6 +151,8 @@ Deno.serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("stripe_customer_id", customerId)
+
+        if (error) console.error("DB update error:", error.message)
         break
       }
 
@@ -110,7 +161,6 @@ Deno.serve(async (req) => {
     }
   } catch (error) {
     console.error("Webhook handler error:", error)
-    // Still return 200 so Stripe doesn't retry
   }
 
   return new Response(JSON.stringify({ received: true }), {
