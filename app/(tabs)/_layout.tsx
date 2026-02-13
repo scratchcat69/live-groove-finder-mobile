@@ -37,22 +37,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="artists"
-        options={{
-          title: "Explore",
-          tabBarIcon: ({ color }) => <TabBarIcon name="compass" color={color} />,
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="feed"
-        options={{
-          title: "Feed",
-          tabBarIcon: ({ color }) => <TabBarIcon name="globe" color={color} />,
-          headerTitle: "Discovery Feed",
-        }}
-      />
-      <Tabs.Screen
         name="events"
         options={{
           title: "Events",

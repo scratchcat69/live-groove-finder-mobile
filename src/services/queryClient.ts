@@ -48,23 +48,6 @@ export const queryKeys = {
       ["events", "ticketmaster", lat, lng, radius, keyword] as const,
   },
 
-  // Artists
-  artists: {
-    all: ["artists"] as const,
-    nearby: (lat: number, lng: number, radius?: number) =>
-      ["artists", "nearby", lat, lng, radius] as const,
-    detail: (id: string) => ["artists", "detail", id] as const,
-    following: (userId: string) => ["artists", "following", userId] as const,
-  },
-
-  // Venues
-  venues: {
-    all: ["venues"] as const,
-    nearby: (lat: number, lng: number, radius?: number) =>
-      ["venues", "nearby", lat, lng, radius] as const,
-    detail: (id: string) => ["venues", "detail", id] as const,
-  },
-
   // Check-ins
   checkins: {
     byUser: (userId: string) => ["checkins", "byUser", userId] as const,
@@ -73,13 +56,6 @@ export const queryKeys = {
   // Notification preferences
   notificationPreferences: {
     byUser: (userId: string) => ["notificationPreferences", "byUser", userId] as const,
-  },
-
-  // Favorites
-  favorites: {
-    all: (userId: string) => ["favorites", userId] as const,
-    byType: (userId: string, type: string) =>
-      ["favorites", userId, type] as const,
   },
 
   // Subscription

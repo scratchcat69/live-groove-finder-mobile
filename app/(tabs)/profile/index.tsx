@@ -15,9 +15,6 @@ import { Text } from "@/components/Themed"
 import { useThemeColor } from "@/components/Themed"
 import { useProfile, useRoles } from "@/src/stores/authStore"
 import { useDiscoveries, Discovery } from "@/src/hooks/useDiscoveries"
-import { useFollowingCount } from "@/src/hooks/useFollowingCount"
-import { useFavorites } from "@/src/hooks/useFavorites"
-import { useFavoriteArtists, FavoriteArtistInfo } from "@/src/hooks/useFavoriteArtists"
 import { useCheckins, CheckinRow } from "@/src/hooks/useCheckins"
 import { useSubscription } from "@/src/hooks/useSubscription"
 import { useRecognitionUsage } from "@/src/hooks/useRecognitionUsage"
@@ -69,34 +66,6 @@ function DiscoveryRow({
   )
 }
 
-function FavoriteArtistRow({
-  artist,
-  onPress,
-}: {
-  artist: FavoriteArtistInfo
-  onPress: () => void
-}) {
-  return (
-    <TouchableOpacity style={styles.favoriteRow} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.favoriteAvatar}>
-        <Text style={styles.favoriteAvatarText}>
-          {artist.name[0]?.toUpperCase() ?? "?"}
-        </Text>
-      </View>
-      <View style={styles.favoriteContent}>
-        <Text style={styles.favoriteName} numberOfLines={1}>
-          {artist.name}
-        </Text>
-        {artist.genre && artist.genre.length > 0 && (
-          <Text style={styles.favoriteGenre} numberOfLines={1}>
-            {artist.genre.join(" · ")}
-          </Text>
-        )}
-      </View>
-    </TouchableOpacity>
-  )
-}
-
 function CheckinRowItem({ checkin }: { checkin: CheckinRow }) {
   const eventName = checkin.events?.name ?? "Unknown Event"
   const venue = checkin.events?.venues
@@ -129,9 +98,6 @@ export default function ProfileScreen() {
 
   const { tier, isPremium } = useSubscription()
   const { count: usageCount, limit: usageLimit } = useRecognitionUsage()
-  const { count: followingCount } = useFollowingCount()
-  const { favoriteIds, count: favoritesCount } = useFavorites("artist")
-  const { data: favoriteArtists = [] } = useFavoriteArtists(favoriteIds())
   const { checkins, count: checkinCount } = useCheckins()
 
   // Refresh discoveries when tab comes back into focus (skip initial mount)
@@ -209,14 +175,6 @@ export default function ProfileScreen() {
             <Text style={styles.statLabel}>Discoveries</Text>
           </View>
           <View style={styles.stat}>
-            <Text style={styles.statNumber}>{followingCount}</Text>
-            <Text style={styles.statLabel}>Following</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statNumber}>{favoritesCount}</Text>
-            <Text style={styles.statLabel}>Favorites</Text>
-          </View>
-          <View style={styles.stat}>
             <Text style={styles.statNumber}>{checkinCount}</Text>
             <Text style={styles.statLabel}>Check-ins</Text>
           </View>
@@ -276,18 +234,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {favoriteArtists.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Favorite Artists</Text>
-            {favoriteArtists.map((artist) => (
-              <FavoriteArtistRow
-                key={artist.id}
-                artist={artist}
-                onPress={() => router.push(`/(tabs)/artists/${artist.id}` as any)}
-              />
-            ))}
-          </View>
-        )}
       </ScrollView>
     </View>
   )
@@ -487,39 +433,5 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     fontSize: 14,
     fontWeight: "600",
-  },
-  favoriteRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#333",
-  },
-  favoriteAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#6366f1",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  favoriteAvatarText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#fff",
-  },
-  favoriteContent: {
-    flex: 1,
-  },
-  favoriteName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#fff",
-  },
-  favoriteGenre: {
-    fontSize: 13,
-    color: "#aaa",
-    marginTop: 2,
   },
 })

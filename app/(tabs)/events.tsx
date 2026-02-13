@@ -9,6 +9,7 @@ import {
   Linking,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from "react-native"
 import { useCallback, useMemo, useRef, useState } from "react"
 import { useFocusEffect } from "@react-navigation/native"
@@ -16,7 +17,6 @@ import { useFocusEffect } from "@react-navigation/native"
 import { Text, View, useThemeColor } from "@/components/Themed"
 import { useLocation } from "@/src/hooks/useLocation"
 import { useEvents, Event, EventAttraction } from "@/src/hooks/useEvents"
-import { SearchBar } from "@/src/components/artists/SearchBar"
 import { useDebounce } from "@/src/hooks/useDebounce"
 import { useCheckins } from "@/src/hooks/useCheckins"
 import { useDistanceUnit } from "@/src/hooks/useDistanceUnit"
@@ -338,11 +338,28 @@ export default function EventsScreen() {
           <Text style={styles.locationLabel}>📍 {locationDisplay}</Text>
         </RNView>
         <RNView style={styles.searchBarContainer}>
-          <SearchBar
-            value={searchKeyword}
-            onChangeText={setSearchKeyword}
-            placeholder="Search events or artists..."
-          />
+          <RNView style={styles.searchBar}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              style={styles.searchInput}
+              value={searchKeyword}
+              onChangeText={setSearchKeyword}
+              placeholder="Search events or artists..."
+              placeholderTextColor="#666"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchKeyword.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchKeyword("")}
+                style={styles.searchClear}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.searchClearText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </RNView>
         </RNView>
         <RNView style={styles.radiusControl}>
           <Text style={styles.radiusLabel}>Radius</Text>
@@ -454,6 +471,40 @@ const styles = StyleSheet.create({
   },
   searchBarContainer: {
     marginBottom: 12,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1a1a1a",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#333",
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: "#fff",
+    padding: 0,
+  },
+  searchClear: {
+    marginLeft: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#333",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchClearText: {
+    color: "#aaa",
+    fontSize: 12,
+    fontWeight: "600",
   },
   radiusControl: {
     gap: 8,
