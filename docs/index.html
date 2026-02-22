@@ -1,0 +1,2368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Groove Finder — Hear a song. Find the show. Get tickets.</title>
+  <meta name="description" content="Recognize live music with audio fingerprinting, find concerts near you, and get tickets instantly. Live Groove Finder is the ultimate companion for live music fans.">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Live Groove Finder">
+  <meta property="og:description" content="Hear a song. Find the show. Get tickets.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="screenshots/discover.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Live Groove Finder">
+  <meta name="twitter:description" content="Hear a song. Find the show. Get tickets.">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+
+  <style>
+    /* ========== Reset & Base ========== */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #000;
+      color: #fff;
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    a {
+      color: #6366f1;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    a:hover {
+      color: #818cf8;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* ========== Utility ========== */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .section {
+      padding: 100px 0;
+    }
+
+    .section-title {
+      font-size: 36px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .section-subtitle {
+      font-size: 18px;
+      color: #aaa;
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto 60px;
+    }
+
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ========== Nav ========== */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 16px 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .nav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .nav-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 20px;
+      background: #6366f1;
+      color: #fff;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .nav-cta:hover {
+      background: #4f46e5;
+      color: #fff;
+    }
+
+    /* ========== Concert Art: Shared ========== */
+    @keyframes beam-sway-1 {
+      0%, 100% { transform: rotate(-25deg) scaleY(1); opacity: 0.5; }
+      50% { transform: rotate(-15deg) scaleY(1.05); opacity: 0.7; }
+    }
+    @keyframes beam-sway-2 {
+      0%, 100% { transform: rotate(20deg) scaleY(1); opacity: 0.4; }
+      50% { transform: rotate(30deg) scaleY(1.05); opacity: 0.6; }
+    }
+    @keyframes beam-sway-3 {
+      0%, 100% { transform: rotate(-8deg); opacity: 0.35; }
+      50% { transform: rotate(5deg); opacity: 0.55; }
+    }
+    @keyframes beam-sway-4 {
+      0%, 100% { transform: rotate(10deg); opacity: 0.3; }
+      50% { transform: rotate(-5deg); opacity: 0.5; }
+    }
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0); }
+      50% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes float-up {
+      0% { transform: translateY(0) scale(1); opacity: 0.6; }
+      100% { transform: translateY(-60px) scale(0.5); opacity: 0; }
+    }
+
+    /* Crowd silhouette as inline SVG data URI */
+    .crowd-silhouette {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 120px;
+      pointer-events: none;
+      z-index: 1;
+      background-repeat: repeat-x;
+      background-position: bottom center;
+      background-size: auto 120px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0 120 L0 95 C10 92 15 70 25 68 C30 66 35 72 40 75 C45 78 48 60 55 55 C60 51 65 58 70 62 C75 66 78 45 85 40 C90 36 95 48 100 52 C105 56 108 38 115 35 C120 32 125 42 130 46 C133 49 138 55 145 58 C150 61 153 42 160 38 C165 35 170 50 178 54 C182 56 188 62 195 55 C200 50 203 35 210 30 C215 26 220 38 225 42 C230 46 235 55 245 58 C250 60 255 48 262 44 C268 40 275 52 282 56 C288 59 295 65 305 60 C310 57 315 42 322 38 C328 35 335 48 342 52 C348 55 355 40 365 35 C372 31 378 45 385 50 C390 54 395 60 405 58 C410 56 418 40 425 36 C432 32 438 46 445 50 C450 53 455 62 465 58 C470 55 478 42 485 38 C492 34 498 48 505 52 C510 55 518 65 528 60 C535 56 540 40 548 35 C555 30 562 45 568 50 C575 54 582 60 592 56 C598 53 605 38 612 34 C618 30 625 44 632 48 C638 52 645 62 655 58 C662 55 668 40 675 36 C682 32 688 48 695 52 C702 56 708 42 715 38 C722 34 728 50 735 55 C742 59 748 65 758 60 C765 56 772 40 778 36 C785 32 792 48 798 52 C805 56 812 62 822 58 C828 55 835 38 842 34 C848 30 855 46 862 50 C868 54 875 60 885 56 C892 52 898 38 905 34 C912 30 918 48 925 52 C932 56 938 42 945 38 C952 34 958 50 965 55 C972 59 978 65 988 60 C995 56 1002 40 1008 36 C1015 32 1022 48 1028 52 C1035 56 1042 62 1052 58 C1058 55 1065 42 1072 38 C1078 34 1085 50 1092 55 C1098 59 1105 48 1115 52 C1122 55 1128 60 1138 58 C1145 56 1152 42 1158 38 C1165 34 1175 50 1185 55 C1192 59 1195 65 1200 60 L1200 120 Z' fill='%23000000'/%3E%3C/svg%3E");
+    }
+
+    /* Stage light beams */
+    .stage-beam {
+      position: absolute;
+      top: -10%;
+      width: 4px;
+      height: 130%;
+      pointer-events: none;
+      border-radius: 50%;
+      filter: blur(8px);
+      transform-origin: top center;
+    }
+
+    /* ========== Hero ========== */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      padding-top: 80px;
+      overflow: hidden;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 50% 35%, rgba(99, 102, 241, 0.15) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 30% 60%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 30% at 70% 55%, rgba(245, 158, 11, 0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* Hero concert light beams */
+    .hero-beams {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .hero-beams .stage-beam:nth-child(1) {
+      left: 15%;
+      background: linear-gradient(180deg, rgba(99,102,241,0.6) 0%, transparent 80%);
+      width: 6px;
+      filter: blur(12px);
+      animation: beam-sway-1 8s ease-in-out infinite;
+    }
+    .hero-beams .stage-beam:nth-child(2) {
+      left: 30%;
+      background: linear-gradient(180deg, rgba(139,92,246,0.5) 0%, transparent 70%);
+      width: 5px;
+      filter: blur(10px);
+      animation: beam-sway-2 7s ease-in-out infinite;
+    }
+    .hero-beams .stage-beam:nth-child(3) {
+      left: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 60%);
+      width: 4px;
+      filter: blur(6px);
+      animation: beam-sway-3 9s ease-in-out infinite;
+    }
+    .hero-beams .stage-beam:nth-child(4) {
+      left: 70%;
+      background: linear-gradient(180deg, rgba(245,158,11,0.4) 0%, transparent 75%);
+      width: 5px;
+      filter: blur(10px);
+      animation: beam-sway-4 7.5s ease-in-out infinite;
+    }
+    .hero-beams .stage-beam:nth-child(5) {
+      left: 85%;
+      background: linear-gradient(180deg, rgba(99,102,241,0.5) 0%, transparent 80%);
+      width: 6px;
+      filter: blur(12px);
+      animation: beam-sway-1 8.5s ease-in-out infinite 0.5s;
+    }
+
+    /* Sparkle particles */
+    .hero-sparkles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .sparkle-dot {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: #fff;
+      border-radius: 50%;
+      animation: sparkle 3s ease-in-out infinite;
+    }
+
+    .hero .crowd-silhouette {
+      opacity: 0.6;
+      height: 100px;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 720px;
+      padding: 0 24px;
+    }
+
+    /* Pulsing ring animation */
+    .pulse-container {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 48px;
+    }
+
+    .pulse-ring {
+      position: absolute;
+      inset: 0;
+      border: 2px solid rgba(99, 102, 241, 0.4);
+      border-radius: 50%;
+      animation: pulse-expand 3s ease-out infinite;
+    }
+
+    .pulse-ring:nth-child(2) {
+      animation-delay: 0.8s;
+    }
+
+    .pulse-ring:nth-child(3) {
+      animation-delay: 1.6s;
+    }
+
+    .pulse-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 40px rgba(99, 102, 241, 0.4);
+    }
+
+    .pulse-center svg {
+      width: 28px;
+      height: 28px;
+      fill: #fff;
+    }
+
+    @keyframes pulse-expand {
+      0% {
+        transform: scale(0.6);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(1.8);
+        opacity: 0;
+      }
+    }
+
+    .hero h1 {
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .hero h1 .gradient-text {
+      background: linear-gradient(135deg, #6366f1, #a78bfa, #6366f1);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradient-shift 4s ease infinite;
+    }
+
+    @keyframes gradient-shift {
+      0%, 100% { background-position: 0% center; }
+      50% { background-position: 100% center; }
+    }
+
+    .hero-tagline {
+      font-size: 22px;
+      color: #aaa;
+      margin-bottom: 40px;
+      font-weight: 400;
+    }
+
+    .hero-form {
+      display: flex;
+      gap: 12px;
+      max-width: 460px;
+      margin: 0 auto;
+    }
+
+    .hero-form input {
+      flex: 1;
+      padding: 14px 18px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .hero-form input::placeholder {
+      color: #666;
+    }
+
+    .hero-form input:focus {
+      border-color: #6366f1;
+    }
+
+    .hero-form button {
+      padding: 14px 28px;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .hero-form button:hover {
+      background: #4f46e5;
+    }
+
+    .hero-form button:active {
+      transform: scale(0.97);
+    }
+
+    .hero-note {
+      margin-top: 16px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    /* ========== Features ========== */
+    .features {
+      background: #000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .features::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 200px;
+      background: linear-gradient(180deg,
+        rgba(99, 102, 241, 0.06) 0%,
+        transparent 100%);
+      pointer-events: none;
+    }
+
+    .features-glow {
+      position: absolute;
+      top: -50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 300px;
+      background: radial-gradient(ellipse, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .feature-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 16px;
+      padding: 36px 28px;
+      text-align: center;
+      transition: border-color 0.3s, transform 0.3s;
+    }
+
+    .feature-card:hover {
+      border-color: #6366f1;
+      transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 20px;
+      background: rgba(99, 102, 241, 0.12);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .feature-icon svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .feature-card h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .feature-card p {
+      font-size: 15px;
+      color: #aaa;
+      line-height: 1.6;
+    }
+
+    /* ========== Screenshots ========== */
+    .screenshots {
+      background: linear-gradient(180deg, #000 0%, #0a0a0a 50%, #000 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .screenshots-concert-bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .screenshots-concert-bg::before {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 100%;
+      background:
+        radial-gradient(ellipse 30% 50% at 10% 80%, rgba(245, 158, 11, 0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 30% 50% at 90% 80%, rgba(99, 102, 241, 0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 50% 90%, rgba(139, 92, 246, 0.05) 0%, transparent 60%);
+    }
+
+    .screenshots-concert-bg .stage-beam {
+      height: 120%;
+      top: -20%;
+    }
+
+    .screenshots-concert-bg .stage-beam:nth-child(1) {
+      left: 5%;
+      background: linear-gradient(180deg, rgba(245,158,11,0.3) 0%, transparent 60%);
+      width: 4px;
+      filter: blur(8px);
+      animation: beam-sway-1 10s ease-in-out infinite;
+    }
+    .screenshots-concert-bg .stage-beam:nth-child(2) {
+      right: 5%;
+      left: auto;
+      background: linear-gradient(180deg, rgba(99,102,241,0.3) 0%, transparent 60%);
+      width: 4px;
+      filter: blur(8px);
+      animation: beam-sway-2 9s ease-in-out infinite;
+    }
+
+    .screenshots .crowd-silhouette {
+      opacity: 0.3;
+      height: 80px;
+    }
+
+    .phones-row {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      align-items: flex-start;
+    }
+
+    .phone-wrapper {
+      flex: 0 0 auto;
+      text-align: center;
+    }
+
+    .phone-frame {
+      width: 260px;
+      height: 540px;
+      background: #1a1a1a;
+      border: 3px solid #333;
+      border-radius: 36px;
+      padding: 12px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .phone-notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 28px;
+      background: #1a1a1a;
+      border-radius: 0 0 16px 16px;
+      z-index: 3;
+    }
+
+    .phone-screen {
+      width: 100%;
+      height: 100%;
+      background: #111;
+      border-radius: 24px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .phone-screen img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 24px;
+    }
+
+    .phone-placeholder {
+      color: #555;
+      font-size: 14px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .phone-placeholder svg {
+      width: 40px;
+      height: 40px;
+      margin-bottom: 12px;
+      opacity: 0.4;
+    }
+
+    /* ========== Inline App Mockups ========== */
+    .mockup {
+      width: 100%;
+      height: 100%;
+      background: #000;
+      border-radius: 24px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+      font-size: 11px;
+      color: #fff;
+      position: relative;
+    }
+
+    .mockup * {
+      box-sizing: border-box;
+    }
+
+    /* Status bar */
+    .mock-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #fff;
+      flex-shrink: 0;
+      min-height: 28px;
+    }
+
+    .mock-status-icons {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    /* Tab bar */
+    .mock-tab-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 6px 0 10px;
+      border-top: 1px solid #222;
+      background: #111;
+      flex-shrink: 0;
+    }
+
+    .mock-tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: 9px;
+      color: #666;
+    }
+
+    .mock-tab.active {
+      color: #6366f1;
+    }
+
+    .mock-tab svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .mock-body {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- Discover Mockup --- */
+    .mock-discover-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+    }
+
+    .mock-discover-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .mock-discover-sub {
+      font-size: 9px;
+      color: #888;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .mock-usage-badge {
+      font-size: 9px;
+      color: #aaa;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 3px 10px;
+      margin-bottom: 14px;
+    }
+
+    .mock-mic-button {
+      width: 72px;
+      height: 72px;
+      position: relative;
+      margin-bottom: 10px;
+    }
+
+    .mock-mic-ring {
+      position: absolute;
+      inset: -8px;
+      border: 1.5px solid rgba(99, 102, 241, 0.3);
+      border-radius: 50%;
+      animation: pulse-expand 3s ease-out infinite;
+    }
+
+    .mock-mic-ring:nth-child(2) { animation-delay: 0.8s; }
+    .mock-mic-ring:nth-child(3) { animation-delay: 1.6s; }
+
+    .mock-mic-circle {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+      position: relative;
+      z-index: 2;
+    }
+
+    .mock-mic-circle svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .mock-discover-hint {
+      font-size: 9px;
+      color: #666;
+    }
+
+    .mock-recent-section {
+      border-top: 1px solid #222;
+      padding: 8px 14px;
+      flex-shrink: 0;
+    }
+
+    .mock-recent-title {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .mock-song-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    .mock-song-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      background: #1DB954;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .mock-song-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .mock-song-name {
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mock-song-artist {
+      font-size: 9px;
+      color: #888;
+    }
+
+    .mock-song-time {
+      font-size: 8px;
+      color: #555;
+      flex-shrink: 0;
+    }
+
+    /* --- Events Mockup --- */
+    .mock-filter-bar {
+      padding: 8px 12px;
+      border-bottom: 1px solid #222;
+      flex-shrink: 0;
+    }
+
+    .mock-location-label {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .mock-search-bar {
+      display: flex;
+      align-items: center;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 5px 8px;
+      margin-bottom: 6px;
+      font-size: 9px;
+      color: #666;
+      gap: 4px;
+    }
+
+    .mock-radius-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .mock-radius-label {
+      font-size: 9px;
+      color: #888;
+      margin-right: 2px;
+    }
+
+    .mock-radius-chip {
+      font-size: 8px;
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: #333;
+      color: #ccc;
+    }
+
+    .mock-radius-chip.active {
+      background: #1DB954;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .mock-events-body {
+      flex: 1;
+      overflow: hidden;
+      padding: 8px 12px;
+    }
+
+    .mock-event-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .mock-event-img {
+      width: 100%;
+      height: 60px;
+      background: linear-gradient(135deg, #1a0030, #1a1a4e, #0a2030);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mock-event-img::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 30% 40%, rgba(99,102,241,0.15) 0%, transparent 70%),
+                  radial-gradient(ellipse at 70% 60%, rgba(139,92,246,0.1) 0%, transparent 60%);
+    }
+
+    .mock-event-img-text {
+      font-size: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .mock-event-body {
+      padding: 8px 10px;
+    }
+
+    .mock-event-date {
+      font-size: 9px;
+      font-weight: 600;
+      color: #1DB954;
+      margin-bottom: 3px;
+    }
+
+    .mock-event-name {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .mock-event-performer {
+      font-size: 9px;
+      color: #6366f1;
+      font-weight: 500;
+    }
+
+    .mock-event-venue {
+      font-size: 9px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .mock-event-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+
+    .mock-genre-badge {
+      font-size: 7px;
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      color: #ccc;
+    }
+
+    .mock-price {
+      font-size: 9px;
+      font-weight: 600;
+      color: #1DB954;
+    }
+
+    .mock-checkin-btn {
+      font-size: 8px;
+      font-weight: 600;
+      color: #22c55e;
+      border: 1px solid #22c55e;
+      border-radius: 10px;
+      padding: 2px 8px;
+    }
+
+    /* --- Profile Mockup --- */
+    .mock-profile-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid #222;
+    }
+
+    .mock-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #6366f1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .mock-username {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .mock-role-badge {
+      font-size: 8px;
+      background: #4f46e5;
+      padding: 2px 8px;
+      border-radius: 8px;
+      text-transform: capitalize;
+      margin-bottom: 6px;
+    }
+
+    .mock-edit-btn {
+      font-size: 9px;
+      font-weight: 600;
+      color: #6366f1;
+      border: 1px solid #6366f1;
+      border-radius: 12px;
+      padding: 3px 14px;
+    }
+
+    .mock-stats-row {
+      display: flex;
+      border-bottom: 1px solid #222;
+      padding: 10px 0;
+    }
+
+    .mock-stat {
+      flex: 1;
+      text-align: center;
+    }
+
+    .mock-stat-num {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .mock-stat-label {
+      font-size: 8px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .mock-sub-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-bottom: 1px solid #222;
+    }
+
+    .mock-sub-badge {
+      font-size: 8px;
+      font-weight: 700;
+      background: #333;
+      padding: 2px 8px;
+      border-radius: 8px;
+      color: #aaa;
+      margin-bottom: 2px;
+    }
+
+    .mock-sub-usage {
+      font-size: 9px;
+      color: #888;
+    }
+
+    .mock-upgrade {
+      font-size: 10px;
+      font-weight: 600;
+      color: #6366f1;
+    }
+
+    .mock-profile-section {
+      padding: 8px 14px;
+    }
+
+    .mock-profile-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .mock-history-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    .mock-history-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .mock-history-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .mock-history-name {
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mock-history-detail {
+      font-size: 8px;
+      color: #888;
+    }
+
+    .mock-history-date {
+      font-size: 8px;
+      color: #555;
+      flex-shrink: 0;
+    }
+
+    .mock-stars {
+      font-size: 8px;
+      color: #f59e0b;
+    }
+
+    /* ========== Concert Scene Dividers ========== */
+    .concert-divider {
+      position: relative;
+      height: 240px;
+      overflow: hidden;
+      background: #000;
+    }
+
+    .concert-divider .scene-gradient {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    /* Scene 1: Blue/purple beams — between Features and Screenshots */
+    .concert-scene-1 .scene-gradient {
+      background:
+        radial-gradient(ellipse 25% 80% at 20% 0%, rgba(99,102,241,0.2) 0%, transparent 70%),
+        radial-gradient(ellipse 25% 80% at 40% 0%, rgba(139,92,246,0.15) 0%, transparent 70%),
+        radial-gradient(ellipse 25% 80% at 60% 0%, rgba(255,255,255,0.05) 0%, transparent 60%),
+        radial-gradient(ellipse 25% 80% at 80% 0%, rgba(245,158,11,0.15) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 40% at 50% 100%, rgba(245,158,11,0.06) 0%, transparent 60%);
+    }
+
+    .concert-scene-1 .stage-beam:nth-child(1) {
+      left: 18%;
+      background: linear-gradient(180deg, rgba(99,102,241,0.5) 0%, rgba(99,102,241,0.1) 40%, transparent 80%);
+      width: 6px; filter: blur(12px);
+      animation: beam-sway-1 7s ease-in-out infinite;
+    }
+    .concert-scene-1 .stage-beam:nth-child(2) {
+      left: 35%;
+      background: linear-gradient(180deg, rgba(139,92,246,0.4) 0%, transparent 70%);
+      width: 5px; filter: blur(10px);
+      animation: beam-sway-2 6s ease-in-out infinite 0.3s;
+    }
+    .concert-scene-1 .stage-beam:nth-child(3) {
+      left: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.25) 0%, transparent 60%);
+      width: 3px; filter: blur(6px);
+      animation: beam-sway-3 8s ease-in-out infinite 0.6s;
+    }
+    .concert-scene-1 .stage-beam:nth-child(4) {
+      left: 65%;
+      background: linear-gradient(180deg, rgba(245,158,11,0.4) 0%, transparent 70%);
+      width: 5px; filter: blur(10px);
+      animation: beam-sway-4 6.5s ease-in-out infinite 0.2s;
+    }
+    .concert-scene-1 .stage-beam:nth-child(5) {
+      left: 82%;
+      background: linear-gradient(180deg, rgba(99,102,241,0.4) 0%, transparent 75%);
+      width: 5px; filter: blur(11px);
+      animation: beam-sway-1 7.5s ease-in-out infinite 0.8s;
+    }
+
+    .concert-scene-1 .crowd-silhouette {
+      opacity: 0.7;
+      height: 100px;
+    }
+
+    /* Scene 2: Warm amber/red — between Screenshots and How It Works */
+    .concert-scene-2 {
+      height: 200px;
+    }
+
+    .concert-scene-2 .scene-gradient {
+      background:
+        radial-gradient(ellipse 30% 70% at 25% 0%, rgba(245,158,11,0.18) 0%, transparent 70%),
+        radial-gradient(ellipse 30% 70% at 50% 0%, rgba(239,68,68,0.1) 0%, transparent 60%),
+        radial-gradient(ellipse 30% 70% at 75% 0%, rgba(245,158,11,0.15) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 30% at 50% 90%, rgba(139,92,246,0.05) 0%, transparent 60%);
+    }
+
+    .concert-scene-2 .stage-beam:nth-child(1) {
+      left: 22%;
+      background: linear-gradient(180deg, rgba(245,158,11,0.45) 0%, transparent 75%);
+      width: 5px; filter: blur(10px);
+      animation: beam-sway-4 7s ease-in-out infinite;
+    }
+    .concert-scene-2 .stage-beam:nth-child(2) {
+      left: 48%;
+      background: linear-gradient(180deg, rgba(239,68,68,0.3) 0%, transparent 60%);
+      width: 4px; filter: blur(8px);
+      animation: beam-sway-3 8s ease-in-out infinite 0.5s;
+    }
+    .concert-scene-2 .stage-beam:nth-child(3) {
+      left: 75%;
+      background: linear-gradient(180deg, rgba(245,158,11,0.4) 0%, transparent 70%);
+      width: 5px; filter: blur(10px);
+      animation: beam-sway-1 7.5s ease-in-out infinite 0.3s;
+    }
+
+    .concert-scene-2 .crowd-silhouette {
+      opacity: 0.6;
+      height: 80px;
+    }
+
+    /* Scene 3: Full stage — between How It Works and Waitlist */
+    .concert-scene-3 {
+      height: 260px;
+    }
+
+    .concert-scene-3 .scene-gradient {
+      background:
+        radial-gradient(ellipse 20% 80% at 10% 0%, rgba(99,102,241,0.15) 0%, transparent 70%),
+        radial-gradient(ellipse 20% 80% at 30% 0%, rgba(139,92,246,0.2) 0%, transparent 70%),
+        radial-gradient(ellipse 15% 70% at 45% 0%, rgba(255,255,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 15% 70% at 55% 0%, rgba(255,255,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 20% 80% at 70% 0%, rgba(245,158,11,0.2) 0%, transparent 70%),
+        radial-gradient(ellipse 20% 80% at 90% 0%, rgba(245,158,11,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 30% at 50% 100%, rgba(0,0,0,0.8) 0%, transparent 60%);
+    }
+
+    .concert-scene-3 .stage-beam:nth-child(1) {
+      left: 8%;
+      background: linear-gradient(180deg, rgba(99,102,241,0.5) 0%, transparent 80%);
+      width: 5px; filter: blur(10px);
+      animation: beam-sway-1 7s ease-in-out infinite;
+    }
+    .concert-scene-3 .stage-beam:nth-child(2) {
+      left: 25%;
+      background: linear-gradient(180deg, rgba(139,92,246,0.45) 0%, transparent 75%);
+      width: 6px; filter: blur(12px);
+      animation: beam-sway-2 6s ease-in-out infinite 0.2s;
+    }
+    .concert-scene-3 .stage-beam:nth-child(3) {
+      left: 42%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 55%);
+      width: 3px; filter: blur(5px);
+      animation: beam-sway-3 9s ease-in-out infinite 0.5s;
+    }
+    .concert-scene-3 .stage-beam:nth-child(4) {
+      left: 58%;
+      background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 55%);
+      width: 3px; filter: blur(5px);
+      animation: beam-sway-4 8.5s ease-in-out infinite 0.3s;
+    }
+    .concert-scene-3 .stage-beam:nth-child(5) {
+      left: 75%;
+      background: linear-gradient(180deg, rgba(245,158,11,0.45) 0%, transparent 75%);
+      width: 6px; filter: blur(12px);
+      animation: beam-sway-1 6.5s ease-in-out infinite 0.7s;
+    }
+    .concert-scene-3 .stage-beam:nth-child(6) {
+      left: 92%;
+      background: linear-gradient(180deg, rgba(245,158,11,0.35) 0%, transparent 70%);
+      width: 4px; filter: blur(9px);
+      animation: beam-sway-4 7.5s ease-in-out infinite 0.1s;
+    }
+
+    .concert-scene-3 .crowd-silhouette {
+      opacity: 0.8;
+      height: 110px;
+    }
+
+    /* Floating particles for concert scenes */
+    .concert-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .concert-particle {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      animation: float-up 4s ease-out infinite;
+    }
+
+    .phone-label {
+      margin-top: 16px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #aaa;
+    }
+
+    /* ========== How It Works ========== */
+    .how-it-works {
+      background: #000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .how-it-works-bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .how-it-works-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 40% 60% at 20% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 60% at 80% 50%, rgba(139, 92, 246, 0.05) 0%, transparent 70%);
+    }
+
+    /* Spotlight cones on each step */
+    .step {
+      text-align: center;
+      position: relative;
+    }
+
+    .step::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(ellipse at center, rgba(99,102,241,0.06) 0%, transparent 70%);
+      pointer-events: none;
+      border-radius: 50%;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 40px;
+      position: relative;
+    }
+
+    .steps::before {
+      content: '';
+      position: absolute;
+      top: 40px;
+      left: calc(16.67% + 20px);
+      right: calc(16.67% + 20px);
+      height: 2px;
+      background: linear-gradient(90deg, #6366f1, #8b5cf6, #6366f1);
+      opacity: 0.3;
+    }
+
+    .step {
+      text-align: center;
+      position: relative;
+    }
+
+    .step-number {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 24px;
+      background: rgba(99, 102, 241, 0.1);
+      border: 2px solid rgba(99, 102, 241, 0.3);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      z-index: 2;
+    }
+
+    .step-number svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .step h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .step-label {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #6366f1;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 12px;
+    }
+
+    .step p {
+      font-size: 15px;
+      color: #aaa;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    /* ========== Waitlist CTA ========== */
+    .waitlist {
+      background: #0a0a0a;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .waitlist-concert-bg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .waitlist-concert-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 50% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 30% 40% at 20% 70%, rgba(245, 158, 11, 0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 30% 40% at 80% 70%, rgba(139, 92, 246, 0.04) 0%, transparent 60%);
+    }
+
+    .waitlist-concert-bg .stage-beam {
+      height: 120%;
+    }
+    .waitlist-concert-bg .stage-beam:nth-child(1) {
+      left: 20%;
+      background: linear-gradient(180deg, rgba(139,92,246,0.25) 0%, transparent 70%);
+      width: 4px;
+      filter: blur(10px);
+      animation: beam-sway-3 9s ease-in-out infinite;
+    }
+    .waitlist-concert-bg .stage-beam:nth-child(2) {
+      left: 80%;
+      background: linear-gradient(180deg, rgba(245,158,11,0.2) 0%, transparent 70%);
+      width: 4px;
+      filter: blur(10px);
+      animation: beam-sway-4 8s ease-in-out infinite;
+    }
+
+    .waitlist .crowd-silhouette {
+      opacity: 0.4;
+      height: 90px;
+    }
+
+    .waitlist-box {
+      max-width: 560px;
+      margin: 0 auto;
+      background: rgba(26, 26, 26, 0.95);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid #333;
+      border-radius: 20px;
+      padding: 48px 40px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .waitlist-box h2 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .waitlist-box p {
+      color: #aaa;
+      font-size: 16px;
+      margin-bottom: 32px;
+    }
+
+    .waitlist-form {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .waitlist-form input {
+      flex: 1;
+      padding: 14px 18px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .waitlist-form input::placeholder {
+      color: #666;
+    }
+
+    .waitlist-form input:focus {
+      border-color: #6366f1;
+    }
+
+    .waitlist-form button {
+      padding: 14px 28px;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    .waitlist-form button:hover {
+      background: #4f46e5;
+    }
+
+    .waitlist-form button:active {
+      transform: scale(0.97);
+    }
+
+    .app-store-badges {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .badge-placeholder {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 10px;
+      color: #888;
+      font-size: 13px;
+    }
+
+    .badge-placeholder svg {
+      width: 20px;
+      height: 20px;
+      fill: #888;
+    }
+
+    .form-success {
+      display: none;
+      color: #22c55e;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 14px;
+    }
+
+    .form-success.show {
+      display: block;
+    }
+
+    /* ========== Footer ========== */
+    footer {
+      padding: 40px 0;
+      border-top: 1px solid #1a1a1a;
+      text-align: center;
+    }
+
+    .footer-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .footer-brand {
+      font-size: 16px;
+      font-weight: 600;
+      color: #888;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 24px;
+    }
+
+    .footer-links a {
+      color: #666;
+      font-size: 14px;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      color: #aaa;
+    }
+
+    .footer-copy {
+      font-size: 13px;
+      color: #444;
+    }
+
+    /* ========== Responsive ========== */
+    @media (max-width: 1024px) {
+      .hero h1 {
+        font-size: 44px;
+      }
+
+      .phones-row {
+        gap: 24px;
+      }
+
+      .phone-frame {
+        width: 220px;
+        height: 460px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .section {
+        padding: 72px 0;
+      }
+
+      .section-title {
+        font-size: 28px;
+      }
+
+      .section-subtitle {
+        font-size: 16px;
+        margin-bottom: 40px;
+      }
+
+      .hero h1 {
+        font-size: 36px;
+      }
+
+      .hero-tagline {
+        font-size: 18px;
+      }
+
+      .hero-form {
+        flex-direction: column;
+      }
+
+      .features-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .phones-row {
+        flex-direction: column;
+        align-items: center;
+        gap: 32px;
+      }
+
+      .phone-frame {
+        width: 240px;
+        height: 500px;
+      }
+
+      .steps {
+        grid-template-columns: 1fr;
+        gap: 48px;
+      }
+
+      .steps::before {
+        display: none;
+      }
+
+      .waitlist-box {
+        padding: 32px 24px;
+      }
+
+      .waitlist-form {
+        flex-direction: column;
+      }
+
+      .app-store-badges {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .concert-divider {
+        height: 160px;
+      }
+
+      .concert-scene-2 {
+        height: 140px;
+      }
+
+      .concert-scene-3 {
+        height: 180px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .hero h1 {
+        font-size: 30px;
+      }
+
+      .pulse-container {
+        width: 100px;
+        height: 100px;
+        margin-bottom: 36px;
+      }
+
+      .pulse-center {
+        width: 52px;
+        height: 52px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <div class="container nav-inner">
+      <div class="nav-logo">
+        <div class="nav-logo-icon">🎵</div>
+        Live Groove Finder
+      </div>
+      <a href="#waitlist" class="nav-cta">Join Waitlist</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="hero-beams">
+      <div class="stage-beam"></div>
+      <div class="stage-beam"></div>
+      <div class="stage-beam"></div>
+      <div class="stage-beam"></div>
+      <div class="stage-beam"></div>
+    </div>
+    <div class="hero-sparkles">
+      <div class="sparkle-dot" style="top:15%;left:10%;animation-delay:0s;"></div>
+      <div class="sparkle-dot" style="top:25%;left:25%;animation-delay:0.8s;"></div>
+      <div class="sparkle-dot" style="top:10%;left:45%;animation-delay:1.5s;"></div>
+      <div class="sparkle-dot" style="top:30%;left:60%;animation-delay:0.3s;"></div>
+      <div class="sparkle-dot" style="top:20%;left:78%;animation-delay:2.1s;"></div>
+      <div class="sparkle-dot" style="top:35%;left:90%;animation-delay:1.2s;"></div>
+      <div class="sparkle-dot" style="top:45%;left:15%;animation-delay:1.8s;"></div>
+      <div class="sparkle-dot" style="top:50%;left:35%;animation-delay:0.6s;"></div>
+      <div class="sparkle-dot" style="top:40%;left:70%;animation-delay:2.5s;"></div>
+      <div class="sparkle-dot" style="top:55%;left:85%;animation-delay:0.9s;"></div>
+      <div class="sparkle-dot" style="top:60%;left:5%;animation-delay:1.4s;"></div>
+      <div class="sparkle-dot" style="top:65%;left:50%;animation-delay:2.0s;"></div>
+    </div>
+    <div class="crowd-silhouette"></div>
+    <div class="hero-content">
+      <div class="pulse-container">
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring"></div>
+        <div class="pulse-ring"></div>
+        <div class="pulse-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </div>
+      </div>
+      <h1>
+        <span class="gradient-text">Live Groove Finder</span>
+      </h1>
+      <p class="hero-tagline">Hear a song. Find the show. Get tickets.</p>
+      <form class="hero-form" id="heroForm">
+        <input type="email" placeholder="Enter your email" required aria-label="Email address">
+        <button type="submit">Join Waitlist</button>
+      </form>
+      <p class="hero-note">Be first to know when we launch. No spam, ever.</p>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features section" id="features">
+    <div class="features-glow"></div>
+    <div class="container" style="position:relative;z-index:1;">
+      <h2 class="section-title fade-in">Everything You Need for Live Music</h2>
+      <p class="section-subtitle fade-in">Three powerful features in one app — from recognizing a song to getting tickets.</p>
+      <div class="features-grid">
+
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </div>
+          <h3>Discover</h3>
+          <p>Recognize any song playing live with audio fingerprinting. Tap once, get the title, artist, and a link to listen.</p>
+        </div>
+
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+              <circle cx="12" cy="16" r="2" fill="#6366f1"/>
+            </svg>
+          </div>
+          <h3>Events</h3>
+          <p>Find concerts and events near you with one tap. Browse by location, check in at shows, and get tickets instantly.</p>
+        </div>
+
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <h3>Profile</h3>
+          <p>Track every song you've discovered and every show you've attended. Your personal live music history, always with you.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Concert Divider 1: Blue/Purple Stage -->
+  <div class="concert-divider concert-scene-1">
+    <div class="scene-gradient"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="concert-particles">
+      <div class="concert-particle" style="left:10%;bottom:30%;animation-delay:0s;"></div>
+      <div class="concert-particle" style="left:25%;bottom:25%;animation-delay:0.8s;"></div>
+      <div class="concert-particle" style="left:40%;bottom:35%;animation-delay:1.6s;"></div>
+      <div class="concert-particle" style="left:55%;bottom:20%;animation-delay:0.4s;"></div>
+      <div class="concert-particle" style="left:70%;bottom:30%;animation-delay:1.2s;"></div>
+      <div class="concert-particle" style="left:85%;bottom:28%;animation-delay:2.0s;"></div>
+      <div class="concert-particle" style="left:15%;bottom:40%;animation-delay:2.5s;"></div>
+      <div class="concert-particle" style="left:60%;bottom:40%;animation-delay:3.0s;"></div>
+    </div>
+    <div class="crowd-silhouette"></div>
+  </div>
+
+  <!-- Screenshots -->
+  <section class="screenshots section" id="screenshots">
+    <div class="screenshots-concert-bg">
+      <div class="stage-beam"></div>
+      <div class="stage-beam"></div>
+    </div>
+    <div class="crowd-silhouette"></div>
+    <div class="container" style="position:relative;z-index:1;">
+      <h2 class="section-title fade-in">See It in Action</h2>
+      <p class="section-subtitle fade-in">A beautiful, intuitive experience designed for the moment.</p>
+      <div class="phones-row fade-in">
+
+        <!-- Discover Screen Mockup -->
+        <div class="phone-wrapper">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="mockup">
+                <div class="mock-status-bar">
+                  <span>9:41</span>
+                  <div class="mock-status-icons">
+                    <svg width="12" height="10" viewBox="0 0 12 10" fill="white"><rect x="0" y="6" width="2" height="4" rx="0.5"/><rect x="3" y="4" width="2" height="6" rx="0.5"/><rect x="6" y="2" width="2" height="8" rx="0.5"/><rect x="9" y="0" width="2" height="10" rx="0.5"/></svg>
+                    <svg width="16" height="10" viewBox="0 0 16 10" fill="white"><rect x="0" y="0" width="14" height="10" rx="2" stroke="white" stroke-width="1" fill="none"/><rect x="14.5" y="3" width="1.5" height="4" rx="0.5"/><rect x="1.5" y="1.5" width="9" height="7" rx="1"/></svg>
+                  </div>
+                </div>
+                <div class="mock-body">
+                  <div class="mock-discover-center">
+                    <div class="mock-discover-title">Discover Music</div>
+                    <div class="mock-discover-sub">Works with recorded music, live performances, and humming</div>
+                    <div class="mock-usage-badge">3 / 5 this month</div>
+                    <div class="mock-mic-button">
+                      <div class="mock-mic-ring"></div>
+                      <div class="mock-mic-ring"></div>
+                      <div class="mock-mic-ring"></div>
+                      <div class="mock-mic-circle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                          <line x1="12" y1="19" x2="12" y2="23"/>
+                          <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                      </div>
+                    </div>
+                    <div class="mock-discover-hint">Tap to identify music</div>
+                  </div>
+                  <div class="mock-recent-section">
+                    <div class="mock-recent-title">Recent Discoveries</div>
+                    <div class="mock-song-row">
+                      <div class="mock-song-icon">🎵</div>
+                      <div class="mock-song-info">
+                        <div class="mock-song-name">Bohemian Rhapsody</div>
+                        <div class="mock-song-artist">Queen</div>
+                      </div>
+                      <div class="mock-song-time">2h ago</div>
+                    </div>
+                    <div class="mock-song-row">
+                      <div class="mock-song-icon">🎵</div>
+                      <div class="mock-song-info">
+                        <div class="mock-song-name">Superstition</div>
+                        <div class="mock-song-artist">Stevie Wonder</div>
+                      </div>
+                      <div class="mock-song-time">5h ago</div>
+                    </div>
+                    <div class="mock-song-row">
+                      <div class="mock-song-icon">🎵</div>
+                      <div class="mock-song-info">
+                        <div class="mock-song-name">Hotel California</div>
+                        <div class="mock-song-artist">Eagles</div>
+                      </div>
+                      <div class="mock-song-time">1d ago</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mock-tab-bar">
+                  <div class="mock-tab active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    Discover
+                  </div>
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Events
+                  </div>
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Profile
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">Discover</div>
+        </div>
+
+        <!-- Events Screen Mockup -->
+        <div class="phone-wrapper">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="mockup">
+                <div class="mock-status-bar">
+                  <span>9:41</span>
+                  <div class="mock-status-icons">
+                    <svg width="12" height="10" viewBox="0 0 12 10" fill="white"><rect x="0" y="6" width="2" height="4" rx="0.5"/><rect x="3" y="4" width="2" height="6" rx="0.5"/><rect x="6" y="2" width="2" height="8" rx="0.5"/><rect x="9" y="0" width="2" height="10" rx="0.5"/></svg>
+                    <svg width="16" height="10" viewBox="0 0 16 10" fill="white"><rect x="0" y="0" width="14" height="10" rx="2" stroke="white" stroke-width="1" fill="none"/><rect x="14.5" y="3" width="1.5" height="4" rx="0.5"/><rect x="1.5" y="1.5" width="9" height="7" rx="1"/></svg>
+                  </div>
+                </div>
+                <div class="mock-body">
+                  <div class="mock-filter-bar">
+                    <div class="mock-location-label">📍 Nashville, TN</div>
+                    <div class="mock-search-bar">
+                      🔍 <span style="color:#555">Search events or artists...</span>
+                    </div>
+                    <div class="mock-radius-row">
+                      <span class="mock-radius-label">Radius</span>
+                      <span class="mock-radius-chip">10 mi</span>
+                      <span class="mock-radius-chip active">25 mi</span>
+                      <span class="mock-radius-chip">50 mi</span>
+                      <span class="mock-radius-chip">100 mi</span>
+                    </div>
+                  </div>
+                  <div class="mock-events-body">
+                    <div class="mock-event-card">
+                      <div class="mock-event-img">
+                        <span class="mock-event-img-text">🎸</span>
+                      </div>
+                      <div class="mock-event-body">
+                        <div class="mock-event-date">Sat, Mar 1 · 8:00 PM</div>
+                        <div class="mock-event-name">Nashville Live Music Festival</div>
+                        <div class="mock-event-performer">The Black Keys · Sturgill Simpson</div>
+                        <div class="mock-event-venue">📍 Ryman Auditorium, Nashville</div>
+                        <div class="mock-event-footer">
+                          <span class="mock-genre-badge">Rock</span>
+                          <span class="mock-price">$45 - $120</span>
+                          <span class="mock-checkin-btn">Check In</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mock-event-card">
+                      <div class="mock-event-img" style="background: linear-gradient(135deg, #1a0020, #2a1040, #0a1030);">
+                        <span class="mock-event-img-text">🎤</span>
+                      </div>
+                      <div class="mock-event-body">
+                        <div class="mock-event-date">Sun, Mar 2 · 7:30 PM</div>
+                        <div class="mock-event-name">Jazz at the Station Inn</div>
+                        <div class="mock-event-performer">Chris Thile</div>
+                        <div class="mock-event-venue">📍 Station Inn, Nashville</div>
+                        <div class="mock-event-footer">
+                          <span class="mock-genre-badge">Jazz</span>
+                          <span class="mock-price">$25 - $40</span>
+                          <span class="mock-checkin-btn">Check In</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mock-tab-bar">
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    Discover
+                  </div>
+                  <div class="mock-tab active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Events
+                  </div>
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Profile
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">Events</div>
+        </div>
+
+        <!-- Profile Screen Mockup -->
+        <div class="phone-wrapper">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="mockup">
+                <div class="mock-status-bar">
+                  <span>9:41</span>
+                  <div class="mock-status-icons">
+                    <svg width="12" height="10" viewBox="0 0 12 10" fill="white"><rect x="0" y="6" width="2" height="4" rx="0.5"/><rect x="3" y="4" width="2" height="6" rx="0.5"/><rect x="6" y="2" width="2" height="8" rx="0.5"/><rect x="9" y="0" width="2" height="10" rx="0.5"/></svg>
+                    <svg width="16" height="10" viewBox="0 0 16 10" fill="white"><rect x="0" y="0" width="14" height="10" rx="2" stroke="white" stroke-width="1" fill="none"/><rect x="14.5" y="3" width="1.5" height="4" rx="0.5"/><rect x="1.5" y="1.5" width="9" height="7" rx="1"/></svg>
+                  </div>
+                </div>
+                <div class="mock-body" style="overflow-y: auto;">
+                  <div class="mock-profile-header">
+                    <div class="mock-avatar">T</div>
+                    <div class="mock-username">TimMusic</div>
+                    <div class="mock-role-badge">fan</div>
+                    <div class="mock-edit-btn">Edit Profile</div>
+                  </div>
+                  <div class="mock-stats-row">
+                    <div class="mock-stat">
+                      <div class="mock-stat-num">12</div>
+                      <div class="mock-stat-label">Discoveries</div>
+                    </div>
+                    <div class="mock-stat">
+                      <div class="mock-stat-num">4</div>
+                      <div class="mock-stat-label">Check-ins</div>
+                    </div>
+                  </div>
+                  <div class="mock-sub-banner">
+                    <div>
+                      <div class="mock-sub-badge">Free Plan</div>
+                      <div class="mock-sub-usage">3/5 recognitions this month</div>
+                    </div>
+                    <div class="mock-upgrade">Upgrade</div>
+                  </div>
+                  <div class="mock-profile-section">
+                    <div class="mock-profile-section-title">My Discoveries</div>
+                    <div class="mock-history-row">
+                      <div class="mock-history-icon" style="background:#1DB954;">🎵</div>
+                      <div class="mock-history-info">
+                        <div class="mock-history-name">Bohemian Rhapsody</div>
+                        <div class="mock-history-detail">Queen</div>
+                      </div>
+                      <div class="mock-history-date">Feb 21</div>
+                    </div>
+                    <div class="mock-history-row">
+                      <div class="mock-history-icon" style="background:#1DB954;">🎵</div>
+                      <div class="mock-history-info">
+                        <div class="mock-history-name">Superstition</div>
+                        <div class="mock-history-detail">Stevie Wonder</div>
+                      </div>
+                      <div class="mock-history-date">Feb 20</div>
+                    </div>
+                  </div>
+                  <div class="mock-profile-section">
+                    <div class="mock-profile-section-title">Concert History (4)</div>
+                    <div class="mock-history-row">
+                      <div class="mock-history-icon" style="background:#22c55e;">✓</div>
+                      <div class="mock-history-info">
+                        <div class="mock-history-name">Nashville Live Music Fest</div>
+                        <div class="mock-history-detail">📍 Ryman Auditorium</div>
+                        <div class="mock-stars">★★★★★</div>
+                      </div>
+                      <div class="mock-history-date">Feb 19</div>
+                    </div>
+                    <div class="mock-history-row">
+                      <div class="mock-history-icon" style="background:#22c55e;">✓</div>
+                      <div class="mock-history-info">
+                        <div class="mock-history-name">Jazz at Station Inn</div>
+                        <div class="mock-history-detail">📍 Station Inn</div>
+                        <div class="mock-stars">★★★★☆</div>
+                      </div>
+                      <div class="mock-history-date">Feb 15</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mock-tab-bar">
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    Discover
+                  </div>
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Events
+                  </div>
+                  <div class="mock-tab active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Profile
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">Profile</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Concert Divider 2: Warm Amber Stage -->
+  <div class="concert-divider concert-scene-2">
+    <div class="scene-gradient"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="concert-particles">
+      <div class="concert-particle" style="left:15%;bottom:25%;animation-delay:0.3s;"></div>
+      <div class="concert-particle" style="left:35%;bottom:30%;animation-delay:1.1s;"></div>
+      <div class="concert-particle" style="left:55%;bottom:20%;animation-delay:0.7s;"></div>
+      <div class="concert-particle" style="left:75%;bottom:35%;animation-delay:1.8s;"></div>
+      <div class="concert-particle" style="left:90%;bottom:25%;animation-delay:2.4s;"></div>
+    </div>
+    <div class="crowd-silhouette"></div>
+  </div>
+
+  <!-- How It Works -->
+  <section class="how-it-works section" id="how-it-works">
+    <div class="how-it-works-bg"></div>
+    <div class="container" style="position:relative;z-index:1;">
+      <h2 class="section-title fade-in">How It Works</h2>
+      <p class="section-subtitle fade-in">Three simple steps from hearing a song to seeing the show.</p>
+      <div class="steps">
+
+        <div class="step fade-in">
+          <div class="step-number">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+          </div>
+          <span class="step-label">Step 1</span>
+          <h3>Hear It</h3>
+          <p>Tap the mic button when you hear live music. Our audio fingerprinting identifies the song in seconds.</p>
+        </div>
+
+        <div class="step fade-in">
+          <div class="step-number">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </div>
+          <span class="step-label">Step 2</span>
+          <h3>Find It</h3>
+          <p>See who's playing and when. Browse upcoming concerts and events happening near you.</p>
+        </div>
+
+        <div class="step fade-in">
+          <div class="step-number">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="none"/>
+            </svg>
+          </div>
+          <span class="step-label">Step 3</span>
+          <h3>Go Live</h3>
+          <p>Get tickets to the show, check in at the venue, and build your live music history.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Concert Divider 3: Full Stage Finale -->
+  <div class="concert-divider concert-scene-3">
+    <div class="scene-gradient"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="stage-beam"></div>
+    <div class="concert-particles">
+      <div class="concert-particle" style="left:8%;bottom:30%;animation-delay:0s;"></div>
+      <div class="concert-particle" style="left:18%;bottom:25%;animation-delay:0.6s;"></div>
+      <div class="concert-particle" style="left:30%;bottom:35%;animation-delay:1.3s;"></div>
+      <div class="concert-particle" style="left:42%;bottom:22%;animation-delay:0.9s;"></div>
+      <div class="concert-particle" style="left:55%;bottom:30%;animation-delay:2.1s;"></div>
+      <div class="concert-particle" style="left:65%;bottom:28%;animation-delay:0.3s;"></div>
+      <div class="concert-particle" style="left:78%;bottom:35%;animation-delay:1.7s;"></div>
+      <div class="concert-particle" style="left:90%;bottom:25%;animation-delay:2.5s;"></div>
+      <div class="concert-particle" style="left:22%;bottom:40%;animation-delay:3.2s;"></div>
+      <div class="concert-particle" style="left:72%;bottom:40%;animation-delay:2.8s;"></div>
+    </div>
+    <div class="crowd-silhouette"></div>
+  </div>
+
+  <!-- Waitlist CTA -->
+  <section class="waitlist section" id="waitlist">
+    <div class="waitlist-concert-bg">
+      <div class="stage-beam"></div>
+      <div class="stage-beam"></div>
+    </div>
+    <div class="crowd-silhouette"></div>
+    <div class="container" style="position:relative;z-index:1;">
+      <div class="waitlist-box fade-in">
+        <h2>Get Early Access</h2>
+        <p>Join the waitlist and be the first to discover live music like never before.</p>
+        <form class="waitlist-form" id="waitlistForm">
+          <input type="email" placeholder="your@email.com" required aria-label="Email address">
+          <button type="submit">Join Waitlist</button>
+        </form>
+        <div class="form-success" id="waitlistSuccess">
+          You're on the list! We'll be in touch soon.
+        </div>
+        <div class="app-store-badges">
+          <div class="badge-placeholder">
+            <svg viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Coming to App Store
+          </div>
+          <div class="badge-placeholder">
+            <svg viewBox="0 0 24 24"><path d="M3.18 23.77L14.2 12.74 3.18.72c-.36-.34-.18-.93.32-.93h1.3c.18 0 .36.07.49.2l12.53 12.2a.75.75 0 010 1.08L5.29 25.47a.69.69 0 01-.49.2H3.5c-.5 0-.68-.56-.32-.9z" fill="#888"/></svg>
+            Coming to Google Play
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-content">
+      <div class="footer-brand">Live Groove Finder</div>
+      <div class="footer-links">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How It Works</a>
+        <a href="#waitlist">Waitlist</a>
+      </div>
+      <p class="footer-copy">&copy; 2026 Live Groove Finder. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // ========== Supabase client ==========
+    const supabase = window.supabase.createClient(
+      'https://uhfhpiqnltuuuofwxpxg.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVoZmhwaXFubHR1dXVvZnd4cHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTU4NzIsImV4cCI6MjA4Mzg5MTg3Mn0.0NZJztzIca2iP9BlPYg3V0mXFqbOB5_AVWRCVO6Lfi0'
+    );
+
+    // ========== Scroll fade-in ==========
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+    );
+
+    document.querySelectorAll('.fade-in').forEach((el) => observer.observe(el));
+
+    // ========== Waitlist form handling ==========
+    function handleWaitlist(form, successId, source) {
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const input = form.querySelector('input[type="email"]');
+        const btn = form.querySelector('button');
+        const email = input.value.trim();
+        if (!email) return;
+
+        // Loading state
+        const originalText = btn.textContent;
+        btn.textContent = 'Joining...';
+        btn.disabled = true;
+        input.disabled = true;
+
+        try {
+          const { error } = await supabase
+            .from('waitlist')
+            .insert({ email, source });
+
+          // Treat duplicate email (23505) as success — don't reveal if already signed up
+          if (error && error.code !== '23505') {
+            throw error;
+          }
+
+          // Show success state
+          if (successId) {
+            const successEl = document.getElementById(successId);
+            if (successEl) {
+              form.style.display = 'none';
+              successEl.classList.add('show');
+            }
+          } else {
+            btn.textContent = 'You\'re In!';
+            btn.style.background = '#22c55e';
+          }
+        } catch (err) {
+          // Show error, re-enable form
+          btn.textContent = 'Something went wrong';
+          btn.style.background = '#ef4444';
+          input.disabled = false;
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = '';
+            btn.disabled = false;
+          }, 3000);
+        }
+      });
+    }
+
+    const heroForm = document.getElementById('heroForm');
+    const waitlistForm = document.getElementById('waitlistForm');
+    if (heroForm) handleWaitlist(heroForm, null, 'hero');
+    if (waitlistForm) handleWaitlist(waitlistForm, 'waitlistSuccess', 'waitlist');
+  </script>
+
+</body>
+</html>
