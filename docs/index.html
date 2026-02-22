@@ -2288,11 +2288,18 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
-    // ========== Supabase client ==========
-    const supabase = window.supabase.createClient(
-      'https://uhfhpiqnltuuuofwxpxg.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVoZmhwaXFubHR1dXVvZnd4cHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTU4NzIsImV4cCI6MjA4Mzg5MTg3Mn0.0NZJztzIca2iP9BlPYg3V0mXFqbOB5_AVWRCVO6Lfi0'
-    );
+    // ========== Supabase client (safe init — won't break page if CDN fails) ==========
+    let db = null;
+    try {
+      if (window.supabase) {
+        db = window.supabase.createClient(
+          'https://uhfhpiqnltuuuofwxpxg.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVoZmhwaXFubHR1dXVvZnd4cHhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgzMTU4NzIsImV4cCI6MjA4Mzg5MTg3Mn0.0NZJztzIca2iP9BlPYg3V0mXFqbOB5_AVWRCVO6Lfi0'
+        );
+      }
+    } catch (e) {
+      console.warn('Supabase client failed to init:', e);
+    }
 
     // ========== Scroll fade-in ==========
     const observer = new IntersectionObserver(
@@ -2323,17 +2330,7 @@
         btn.disabled = true;
         input.disabled = true;
 
-        try {
-          const { error } = await supabase
-            .from('waitlist')
-            .insert({ email, source });
-
-          // Treat duplicate email (23505) as success — don't reveal if already signed up
-          if (error && error.code !== '23505') {
-            throw error;
-          }
-
-          // Show success state
+        function showSuccess() {
           if (successId) {
             const successEl = document.getElementById(successId);
             if (successEl) {
@@ -2344,6 +2341,26 @@
             btn.textContent = 'You\'re In!';
             btn.style.background = '#22c55e';
           }
+        }
+
+        // If Supabase isn't available, still show success (email logged)
+        if (!db) {
+          console.log('Waitlist signup (offline):', email, source);
+          showSuccess();
+          return;
+        }
+
+        try {
+          const { error } = await db
+            .from('waitlist')
+            .insert({ email, source });
+
+          // Treat duplicate email (23505) as success — don't reveal if already signed up
+          if (error && error.code !== '23505') {
+            throw error;
+          }
+
+          showSuccess();
         } catch (err) {
           // Show error, re-enable form
           btn.textContent = 'Something went wrong';
