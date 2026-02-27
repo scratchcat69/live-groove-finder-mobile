@@ -4,6 +4,7 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Linking,
   View as RNView,
 } from "react-native"
 import { useRouter } from "expo-router"
@@ -134,6 +135,25 @@ export default function SettingsScreen() {
             onPress={() => router.push("/(tabs)/profile/edit" as any)}
           >
             <Text style={styles.settingLabel}>Edit Profile</Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Legal */}
+        <SectionHeader title="LEGAL" />
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => Linking.openURL("https://livegroovefinder.com/privacy")}
+          >
+            <Text style={styles.settingLabel}>Privacy Policy</Text>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingRow}
+            onPress={() => Alert.alert("Terms of Service", "Apple's standard EULA applies. Custom terms coming soon.")}
+          >
+            <Text style={styles.settingLabel}>Terms of Service</Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         </View>

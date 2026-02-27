@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "live-groove-finder-mobile",
+    "name": "Live Groove Finder",
     "slug": "live-groove-finder-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,21 +11,29 @@
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.live-groove-finder-mobile"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.tjnaiai.livegroovefinder",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Live Groove Finder needs microphone access to identify songs playing around you.",
+        "NSLocationWhenInUseUsageDescription": "Live Groove Finder uses your location to find concerts and events near you.",
+        "NSPhotoLibraryUsageDescription": "Live Groove Finder needs photo library access to set your profile avatar."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "web": {

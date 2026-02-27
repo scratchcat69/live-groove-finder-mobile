@@ -163,11 +163,15 @@ export function useAudioRecording(options?: UseAudioRecordingOptions): UseAudioR
       }
 
       // Read file and convert to base64
-      console.log("=== AUDIO RECORDING STOP ===")
-      console.log("Recording URI:", uri)
+      if (__DEV__) {
+        console.log("=== AUDIO RECORDING STOP ===")
+        console.log("Recording URI:", uri)
+      }
       const file = new File(uri)
       const base64 = await file.base64()
-      console.log("Base64 length:", base64?.length)
+      if (__DEV__) {
+        console.log("Base64 length:", base64?.length)
+      }
 
       setStatus("idle")
       setDuration(0)
