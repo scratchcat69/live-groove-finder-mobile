@@ -470,8 +470,8 @@
 
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 32px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
       position: relative;
       z-index: 1;
     }
@@ -574,7 +574,7 @@
     .phones-row {
       display: flex;
       justify-content: center;
-      gap: 40px;
+      gap: 24px;
       align-items: flex-start;
     }
 
@@ -584,8 +584,8 @@
     }
 
     .phone-frame {
-      width: 260px;
-      height: 540px;
+      width: 230px;
+      height: 490px;
       background: #1a1a1a;
       border: 3px solid #333;
       border-radius: 36px;
@@ -693,7 +693,7 @@
       flex-direction: column;
       align-items: center;
       gap: 2px;
-      font-size: 9px;
+      font-size: 7px;
       color: #666;
     }
 
@@ -702,8 +702,8 @@
     }
 
     .mock-tab svg {
-      width: 18px;
-      height: 18px;
+      width: 15px;
+      height: 15px;
     }
 
     .mock-body {
@@ -1147,6 +1147,115 @@
     .mock-stars {
       font-size: 8px;
       color: #f59e0b;
+    }
+
+    /* ========== Map Mockup ========== */
+    .mock-map-bg {
+      flex: 1;
+      background: linear-gradient(160deg, #1a2332, #1c2538, #1e2740);
+      position: relative;
+      overflow: hidden;
+    }
+    .mock-map-grid {
+      position: absolute;
+      inset: 0;
+      opacity: 0.15;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.3) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.3) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .mock-map-road {
+      position: absolute;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+    }
+    .mock-map-road.h1 { top: 35%; left: 0; right: 0; height: 4px; }
+    .mock-map-road.h2 { top: 65%; left: 0; right: 0; height: 3px; }
+    .mock-map-road.v1 { left: 30%; top: 0; bottom: 0; width: 4px; }
+    .mock-map-road.v2 { left: 70%; top: 0; bottom: 0; width: 3px; }
+    .mock-map-filters {
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 6px;
+    }
+    .mock-map-chip {
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 7px;
+      font-weight: 600;
+      background: rgba(26,26,26,0.9);
+      color: #aaa;
+      border: 1px solid #333;
+    }
+    .mock-map-chip.active {
+      background: #6366f1;
+      color: #fff;
+      border-color: #6366f1;
+    }
+    .mock-map-count {
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 7px;
+      color: #aaa;
+      background: rgba(26,26,26,0.9);
+      padding: 3px 8px;
+      border-radius: 8px;
+    }
+    .mock-map-pin {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #6366f1;
+      border: 2px solid rgba(99,102,241,0.4);
+      box-shadow: 0 0 8px rgba(99,102,241,0.5);
+    }
+    .mock-map-pin::after {
+      content: '';
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      right: -4px;
+      bottom: -4px;
+      border-radius: 50%;
+      border: 1px solid rgba(99,102,241,0.2);
+    }
+    .mock-map-userdot {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4A90D9;
+      border: 2px solid #fff;
+      box-shadow: 0 0 6px rgba(74,144,217,0.5);
+    }
+    .mock-map-recenter {
+      position: absolute;
+      bottom: 10px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 11px;
+      background: #6366f1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mock-map-recenter svg {
+      width: 11px;
+      height: 11px;
+    }
+    .mock-map-label {
+      position: absolute;
+      font-size: 6px;
+      color: rgba(255,255,255,0.4);
+      font-weight: 500;
     }
 
     /* ========== Concert Scene Dividers ========== */
@@ -1810,7 +1919,7 @@
     <div class="features-glow"></div>
     <div class="container" style="position:relative;z-index:1;">
       <h2 class="section-title fade-in">Everything You Need for Live Music</h2>
-      <p class="section-subtitle fade-in">Three powerful features in one app — from recognizing a song to getting tickets.</p>
+      <p class="section-subtitle fade-in">Four powerful features in one app — from recognizing a song to mapping the scene.</p>
       <div class="features-grid">
 
         <div class="feature-card fade-in">
@@ -1849,6 +1958,17 @@
           </div>
           <h3>Profile</h3>
           <p>Track every song you've discovered and every show you've attended. Your personal live music history, always with you.</p>
+        </div>
+
+        <div class="feature-card fade-in">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <h3>Live Map</h3>
+          <p>See where music is being discovered right now. A crowd-sourced map of live performances, updated in real time.</p>
         </div>
 
       </div>
@@ -1959,6 +2079,10 @@
                     Events
                   </div>
                   <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Map
+                  </div>
+                  <div class="mock-tab">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     Profile
                   </div>
@@ -2041,6 +2165,10 @@
                     Events
                   </div>
                   <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Map
+                  </div>
+                  <div class="mock-tab">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     Profile
                   </div>
@@ -2066,8 +2194,8 @@
                 </div>
                 <div class="mock-body" style="overflow-y: auto;">
                   <div class="mock-profile-header">
-                    <div class="mock-avatar">T</div>
-                    <div class="mock-username">TimMusic</div>
+                    <div class="mock-avatar">M</div>
+                    <div class="mock-username">MusicFan42</div>
                     <div class="mock-role-badge">fan</div>
                     <div class="mock-edit-btn">Edit Profile</div>
                   </div>
@@ -2138,6 +2266,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                     Events
                   </div>
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Map
+                  </div>
                   <div class="mock-tab active">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     Profile
@@ -2147,6 +2279,70 @@
             </div>
           </div>
           <div class="phone-label">Profile</div>
+        </div>
+
+        <!-- Map Screen Mockup -->
+        <div class="phone-wrapper">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="mockup">
+                <div class="mock-status-bar">
+                  <span>9:41</span>
+                  <div class="mock-status-icons">
+                    <svg width="12" height="10" viewBox="0 0 12 10" fill="white"><rect x="0" y="6" width="2" height="4" rx="0.5"/><rect x="3" y="4" width="2" height="6" rx="0.5"/><rect x="6" y="2" width="2" height="8" rx="0.5"/><rect x="9" y="0" width="2" height="10" rx="0.5"/></svg>
+                    <svg width="16" height="10" viewBox="0 0 16 10" fill="white"><rect x="0" y="0" width="14" height="10" rx="2" stroke="white" stroke-width="1" fill="none"/><rect x="14.5" y="3" width="1.5" height="4" rx="0.5"/><rect x="1.5" y="1.5" width="9" height="7" rx="1"/></svg>
+                  </div>
+                </div>
+                <div class="mock-body" style="padding:0; display:flex; flex-direction:column;">
+                  <div class="mock-map-bg">
+                    <div class="mock-map-grid"></div>
+                    <div class="mock-map-road h1"></div>
+                    <div class="mock-map-road h2"></div>
+                    <div class="mock-map-road v1"></div>
+                    <div class="mock-map-road v2"></div>
+                    <div class="mock-map-label" style="top:30%;left:15%;">Downtown</div>
+                    <div class="mock-map-label" style="top:55%;left:55%;">Midtown</div>
+                    <div class="mock-map-label" style="top:75%;left:20%;">East Nashville</div>
+                    <div class="mock-map-pin" style="top:28%;left:40%;"></div>
+                    <div class="mock-map-pin" style="top:42%;left:60%;"></div>
+                    <div class="mock-map-pin" style="top:55%;left:25%;"></div>
+                    <div class="mock-map-pin" style="top:38%;left:75%;"></div>
+                    <div class="mock-map-pin" style="top:70%;left:50%;"></div>
+                    <div class="mock-map-userdot" style="top:48%;left:45%;"></div>
+                    <div class="mock-map-filters">
+                      <span class="mock-map-chip">Live Now</span>
+                      <span class="mock-map-chip active">Today</span>
+                      <span class="mock-map-chip">This Week</span>
+                    </div>
+                    <div class="mock-map-count">5 discoveries</div>
+                    <div class="mock-map-recenter">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+                    </div>
+                  </div>
+                </div>
+                <div class="mock-tab-bar">
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    Discover
+                  </div>
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Events
+                  </div>
+                  <div class="mock-tab active">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Map
+                  </div>
+                  <div class="mock-tab">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Profile
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-label">Live Map</div>
         </div>
 
       </div>
