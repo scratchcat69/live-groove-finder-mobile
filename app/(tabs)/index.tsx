@@ -1,4 +1,4 @@
-import { StyleSheet, Alert, ScrollView, TouchableOpacity } from "react-native"
+import { StyleSheet, ActionSheetIOS, Alert, Linking, Platform, ScrollView, Share, TouchableOpacity } from "react-native"
 import { useCallback, useEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "expo-router"
@@ -28,40 +28,83 @@ function DiscoveryItem({
   onDelete: (id: string) => void
 }) {
   const timeAgo = getTimeAgo(discovery.discovered_at)
+  const title = discovery.song_title ?? "Unknown Title"
+  const artist = discovery.song_artist ?? "Unknown Artist"
+  const spotifyUrl = discovery.song_metadata?.spotifyUrl ?? ""
 
-  const handleDelete = () => {
-    Alert.alert(
-      "Delete Discovery",
-      `Delete "${discovery.song_title ?? "Unknown"}" by ${discovery.song_artist ?? "Unknown"}?`,
-      [
-        { text: "Cancel", style: "cancel" },
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `I discovered "${title}" by ${artist} on Live Groove Finder!${spotifyUrl ? `\nListen: ${spotifyUrl}` : ""}`,
+      })
+    } catch {
+      // User cancelled share
+    }
+  }
+
+  const handleOpenSpotify = () => {
+    if (spotifyUrl) {
+      Linking.openURL(spotifyUrl)
+    }
+  }
+
+  const handlePress = () => {
+    const options: string[] = []
+    const actions: (() => void)[] = []
+
+    if (spotifyUrl) {
+      options.push("Listen on Spotify")
+      actions.push(handleOpenSpotify)
+    }
+    options.push("Share")
+    actions.push(handleShare)
+    options.push("Delete")
+    actions.push(() => onDelete(discovery.id))
+    options.push("Cancel")
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
         {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => onDelete(discovery.id),
+          options,
+          destructiveButtonIndex: options.indexOf("Delete"),
+          cancelButtonIndex: options.length - 1,
+          title: `${title}\n${artist}`,
         },
-      ]
-    )
+        (buttonIndex) => {
+          if (buttonIndex !== options.length - 1) {
+            actions[buttonIndex]()
+          }
+        }
+      )
+    } else {
+      // Android fallback using Alert
+      const buttons: { text: string; style?: "default" | "cancel" | "destructive"; onPress?: () => void }[] =
+        actions.slice(0, -1).map((action, i) => ({
+          text: options[i],
+          style: (options[i] === "Delete" ? "destructive" : "default") as "default" | "destructive",
+          onPress: action,
+        }))
+      buttons.push({ text: "Cancel", style: "cancel" })
+      Alert.alert(title, artist, buttons)
+    }
   }
 
   return (
-    <View style={styles.discoveryItem}>
+    <TouchableOpacity style={styles.discoveryItem} onPress={handlePress} activeOpacity={0.7}>
       <View style={styles.discoveryIcon}>
         <Text style={styles.discoveryIconText}>🎵</Text>
       </View>
       <View style={styles.discoveryInfo}>
         <Text style={styles.discoveryTitle} numberOfLines={1}>
-          {discovery.song_title ?? "Unknown Title"}
+          {title}
         </Text>
         <Text style={styles.discoveryArtist} numberOfLines={1}>
-          {discovery.song_artist ?? "Unknown Artist"}
+          {artist}
         </Text>
         <Text style={styles.discoveryTime}>{timeAgo}</Text>
       </View>
-      <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-        <Text style={styles.deleteButtonText}>✕</Text>
-      </TouchableOpacity>
-    </View>
+      <Text style={styles.discoveryChevron}>›</Text>
+    </TouchableOpacity>
   )
 }
 
@@ -353,18 +396,10 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     marginTop: 4,
   },
-  deleteButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
-    alignItems: "center",
-    justifyContent: "center",
+  discoveryChevron: {
+    fontSize: 22,
+    color: "#666",
+    fontWeight: "300",
     marginLeft: 8,
-  },
-  deleteButtonText: {
-    color: "#ef4444",
-    fontSize: 14,
-    fontWeight: "600",
   },
 })
