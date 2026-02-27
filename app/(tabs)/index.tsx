@@ -30,7 +30,8 @@ function DiscoveryItem({
   const timeAgo = getTimeAgo(discovery.discovered_at)
   const title = discovery.song_title ?? "Unknown Title"
   const artist = discovery.song_artist ?? "Unknown Artist"
-  const spotifyUrl = discovery.song_metadata?.spotifyUrl ?? ""
+  const spotifyUrl = discovery.song_metadata?.spotifyUrl
+    || `https://open.spotify.com/search/${encodeURIComponent(`${discovery.song_title ?? ""} ${discovery.song_artist ?? ""}`.trim())}`
 
   const handleShare = async () => {
     try {
