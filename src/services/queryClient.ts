@@ -36,6 +36,8 @@ export const queryKeys = {
     detail: (id: string) => ["discoveries", "detail", id] as const,
     byUser: (userId: string) => ["discoveries", "byUser", userId] as const,
     recent: (limit?: number) => ["discoveries", "recent", limit] as const,
+    nearby: (lat: number, lng: number, timeFilter: string) =>
+      ["discoveries", "nearby", lat, lng, timeFilter] as const,
   },
 
   // Events

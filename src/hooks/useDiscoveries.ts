@@ -14,6 +14,8 @@ export interface Discovery {
     spotifyUrl?: string
   } | null
   location?: string | null
+  latitude?: number | null
+  longitude?: number | null
   discovered_at: string | null
 }
 
