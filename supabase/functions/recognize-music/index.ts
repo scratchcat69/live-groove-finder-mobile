@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
           album: match.album || undefined,
           releaseDate: match.release_date || undefined,
           spotifyUrl,
-          confidence: 1.0, // AudD returns a match or nothing — no partial scores
+          confidence: 100, // AudD returns a match or nothing — no partial scores
           matchType: "fingerprint",
         },
       }
