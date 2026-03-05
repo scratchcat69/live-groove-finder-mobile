@@ -74,7 +74,7 @@ supabase/functions/          # Edge function source (shared with web app)
 - `has_role(_user_id, _role)` — Role check
 
 ### Edge Functions
-1. **recognize-music** — Audio recognition via ACRCloud (fingerprint + humming/melody). Validates JWT, accepts base64 audio + location, saves discovery on match. Confidence threshold: 60%.
+1. **recognize-music** — Audio recognition via AudD (fingerprint). Validates JWT, accepts base64 audio + location, saves discovery on match.
 2. **ticketmaster-events** — Nearby event search. Accepts lat/lng/radius, returns transformed event data with venue info, pricing, images.
 3. **admin-manage-role** — Admin-only role assignment. Validates caller is admin, prevents self-removal.
 
@@ -103,7 +103,7 @@ supabase/functions/          # Edge function source (shared with web app)
 ## Current Implementation Status
 
 ### Fully Implemented
-- Music recognition (audio recording, ACRCloud edge function, result display)
+- Music recognition (audio recording, AudD edge function, result display)
 - Community discovery feed (public feed with FlatList, pull-to-refresh)
 - Events tab (Ticketmaster integration, radius filter, location permissions)
 - Authentication (email/password sign-up/in/out, Zustand auth store)
@@ -214,7 +214,7 @@ EXPO_PUBLIC_SUPABASE_URL=https://uhfhpiqnltuuuofwxpxg.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<supabase-anon-key>
 
 # Edge function env vars (set in Supabase dashboard, not in mobile app)
-# ACRCLOUD_ACCESS_KEY, ACRCLOUD_ACCESS_SECRET, ACRCLOUD_HOST
+# AUDD_API_TOKEN
 # TICKETMASTER_API_KEY
 # SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 ```

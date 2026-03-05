@@ -1,33 +1,36 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { encodeBase64, decodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts"
+import { decodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 }
 
-interface ACRCloudResult {
-  status: {
-    code: number
-    msg: string
-  }
-  metadata?: {
-    music?: Array<{
-      title: string
-      artists: Array<{ name: string }>
-      album?: { name: string }
-      release_date?: string
-      external_metadata?: {
-        spotify?: { track?: { id: string } }
+interface AudDResult {
+  status: "success" | "error"
+  result: {
+    artist: string
+    title: string
+    album: string
+    release_date: string
+    label: string
+    timecode: string
+    song_link: string
+    spotify?: {
+      album?: {
+        name: string
+        images?: Array<{ url: string }>
       }
-      score: number
-    }>
-    humming?: Array<{
-      title: string
-      artists: Array<{ name: string }>
-      album?: { name: string }
-      score: number
-    }>
+      external_urls?: { spotify: string }
+      id?: string
+    }
+    apple_music?: {
+      url?: string
+    }
+  } | null
+  error?: {
+    error_code: number
+    error_message: string
   }
 }
 
@@ -47,54 +50,20 @@ interface RecognitionResponse {
   debug?: string
 }
 
-// Generate ACRCloud HMAC-SHA1 signature using Web Crypto API
-async function generateSignature(
-  accessKey: string,
-  accessSecret: string,
-  timestamp: number,
-  dataType: string = "audio"
-): Promise<string> {
-  const stringToSign = `POST\n/v1/identify\n${accessKey}\n${dataType}\n1\n${timestamp}`
-
-  const encoder = new TextEncoder()
-  const keyData = encoder.encode(accessSecret)
-  const messageData = encoder.encode(stringToSign)
-
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"]
-  )
-
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData)
-  return encodeBase64(new Uint8Array(signature))
-}
-
-// Call ACRCloud API
-async function recognizeWithACRCloud(
+// Call AudD API
+async function recognizeWithAudD(
   audioBase64: string,
-  accessKey: string,
-  accessSecret: string,
-  host: string
-): Promise<ACRCloudResult> {
-  const timestamp = Math.floor(Date.now() / 1000)
-  const signature = await generateSignature(accessKey, accessSecret, timestamp)
-
-  // Decode base64 to get raw audio bytes
+  apiToken: string
+): Promise<AudDResult> {
+  // Decode base64 to raw bytes for file upload
   const audioBytes = decodeBase64(audioBase64)
 
   const formData = new FormData()
-  formData.append("access_key", accessKey)
-  formData.append("data_type", "audio")
-  formData.append("signature", signature)
-  formData.append("signature_version", "1")
-  formData.append("timestamp", timestamp.toString())
-  formData.append("sample_bytes", audioBytes.length.toString())
-  formData.append("sample", new Blob([audioBytes], { type: "audio/m4a" }), "sample.m4a")
+  formData.append("api_token", apiToken)
+  formData.append("return", "spotify")
+  formData.append("file", new Blob([audioBytes], { type: "audio/m4a" }), "sample.m4a")
 
-  const response = await fetch(`https://${host}/v1/identify`, {
+  const response = await fetch("https://api.audd.io/", {
     method: "POST",
     body: formData,
   })
@@ -102,7 +71,7 @@ async function recognizeWithACRCloud(
   const responseText = await response.text()
 
   if (!response.ok) {
-    throw new Error(`ACRCloud API error: ${response.status} ${response.statusText} - ${responseText}`)
+    throw new Error(`AudD API error: ${response.status} ${response.statusText} - ${responseText}`)
   }
 
   return JSON.parse(responseText)
@@ -174,86 +143,50 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Get ACRCloud credentials from environment
-    const accessKey = Deno.env.get("ACRCLOUD_ACCESS_KEY")
-    const accessSecret = Deno.env.get("ACRCLOUD_ACCESS_SECRET")
-    const host = Deno.env.get("ACRCLOUD_HOST") || "identify-us-west-2.acrcloud.com"
+    // Get AudD API token from environment
+    const apiToken = Deno.env.get("AUDD_API_TOKEN")
 
-    if (!accessKey || !accessSecret) {
+    if (!apiToken) {
       return new Response(
         JSON.stringify({ success: false, error: "Recognition service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       )
     }
 
-    const acrResult = await recognizeWithACRCloud(audioBase64, accessKey, accessSecret, host)
+    const auddResult = await recognizeWithAudD(audioBase64, apiToken)
 
     let response: RecognitionResponse
 
-    // Minimum confidence threshold (0-1 scale, e.g., 0.60 = 60%)
-    // Below this, we treat as "not found" to avoid showing wrong results
-    const MIN_CONFIDENCE = 0.60
-
-    // Check for music match (fingerprint)
-    if (acrResult.status.code === 0 && acrResult.metadata?.music?.length) {
-      const match = acrResult.metadata.music[0]
-      const confidence = match.score
-
-      if (confidence >= MIN_CONFIDENCE) {
-        const spotifyId = match.external_metadata?.spotify?.track?.id
-
-        response = {
-          success: true,
-          type: "commercial",
-          song: {
-            title: match.title,
-            artist: match.artists.map(a => a.name).join(", "),
-            album: match.album?.name,
-            releaseDate: match.release_date,
-            spotifyUrl: spotifyId ? `https://open.spotify.com/track/${spotifyId}` : undefined,
-            confidence: match.score,
-            matchType: "fingerprint",
-          },
-        }
-      } else {
-        response = {
-          success: true,
-          type: "not_found",
-          debug: `Low confidence match (${Math.round(confidence * 100)}%) - below ${Math.round(MIN_CONFIDENCE * 100)}% threshold`,
-        }
+    if (auddResult.status === "error") {
+      response = {
+        success: false,
+        type: "not_found",
+        error: auddResult.error?.error_message || "Recognition service error",
+        debug: `AudD error code: ${auddResult.error?.error_code}`,
       }
-    }
-    // Check for humming match (melody)
-    else if (acrResult.status.code === 0 && acrResult.metadata?.humming?.length) {
-      const match = acrResult.metadata.humming[0]
-      const confidence = match.score
+    } else if (auddResult.result) {
+      const match = auddResult.result
+      const spotifyUrl = match.spotify?.external_urls?.spotify
+        || (match.spotify?.id ? `https://open.spotify.com/track/${match.spotify.id}` : undefined)
 
-      if (confidence >= MIN_CONFIDENCE) {
-        response = {
-          success: true,
-          type: "humming",
-          song: {
-            title: match.title,
-            artist: match.artists.map(a => a.name).join(", "),
-            album: match.album?.name,
-            confidence: match.score,
-            matchType: "melody",
-          },
-        }
-      } else {
-        response = {
-          success: true,
-          type: "not_found",
-          debug: `Low confidence humming match (${Math.round(confidence * 100)}%) - below ${Math.round(MIN_CONFIDENCE * 100)}% threshold`,
-        }
+      response = {
+        success: true,
+        type: "commercial",
+        song: {
+          title: match.title,
+          artist: match.artist,
+          album: match.album || undefined,
+          releaseDate: match.release_date || undefined,
+          spotifyUrl,
+          confidence: 1.0, // AudD returns a match or nothing — no partial scores
+          matchType: "fingerprint",
+        },
       }
-    }
-    // No match found
-    else {
+    } else {
+      // No match
       response = {
         success: true,
         type: "not_found",
-        debug: `ACRCloud code: ${acrResult.status.code}, msg: ${acrResult.status.msg}`,
       }
     }
 
@@ -265,7 +198,7 @@ Deno.serve(async (req) => {
       if (supabaseUrl && supabaseKey) {
         const supabase = createClient(supabaseUrl, supabaseKey)
 
-        const { data, error } = await supabase.from("discoveries").insert({
+        const { error } = await supabase.from("discoveries").insert({
           discovered_by_user_id: userId,
           song_title: response.song.title,
           song_artist: response.song.artist,
